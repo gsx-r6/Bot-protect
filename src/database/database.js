@@ -29,8 +29,11 @@ class DB {
             modlog_channel TEXT,
             verify_channel TEXT,
             autorole_id TEXT,
+            embed_color TEXT DEFAULT '#FF69B4',
             updated_at TEXT
         )`).run();
+        
+        this._runMigrations();
         
         this.db.prepare(`CREATE TABLE IF NOT EXISTS warnings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +75,23 @@ class DB {
             voice_log BOOLEAN DEFAULT 0,
             updated_at TEXT
         )`).run();
+        
+        this._runMigrations();
+    }
+
+    _runMigrations() {
+        try {
+            const tableInfo = this.db.prepare("PRAGMA table_info(guild_config)").all();
+            const hasEmbedColor = tableInfo.some(col => col.name === 'embed_color');
+            
+            if (!hasEmbedColor) {
+                logger.info('Running migration: Adding embed_color column to guild_config');
+                this.db.prepare("ALTER TABLE guild_config ADD COLUMN embed_color TEXT DEFAULT '#FF69B4'").run();
+                logger.info('Migration completed: embed_color column added successfully');
+            }
+        } catch (err) {
+            logger.warn('Migration check/execution failed (might be normal if table does not exist yet): ' + err.message);
+        }
     }
 
     addSanction(guild, user, type, reason, mod) {

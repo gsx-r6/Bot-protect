@@ -89,6 +89,28 @@ class ConfigService {
     setAutorole(guildId, roleId) {
         return this.setGuildConfig(guildId, 'autorole_id', roleId);
     }
+
+    getEmbedColor(guildId) {
+        try {
+            const config = this.getGuildConfig(guildId);
+            return config?.embed_color || process.env.EMBED_COLOR || '#FF69B4';
+        } catch (err) {
+            return process.env.EMBED_COLOR || '#FF69B4';
+        }
+    }
+
+    setEmbedColor(guildId, color) {
+        try {
+            return this.setGuildConfig(guildId, 'embed_color', color);
+        } catch (err) {
+            throw new Error('Failed to set embed color. Database migration may be required.');
+        }
+    }
+
+    resetGuildConfig(guildId) {
+        const stmt = db.db.prepare('DELETE FROM guild_config WHERE guild_id = ?');
+        return stmt.run(guildId);
+    }
 }
 
 module.exports = new ConfigService();

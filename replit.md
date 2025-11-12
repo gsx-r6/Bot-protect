@@ -48,7 +48,12 @@ src/
 
 ### Commands List
 
-**Administration** (11 commands)
+**Administration** (16 commands)
+- `config` - View complete server configuration
+- `dashboard` - Complete control panel with stats
+- `setup` - Interactive setup guide
+- `setcolor` - Customize embed colors (with presets)
+- `resetconfig` - Reset server configuration
 - `autorole`, `removeautorole` - Automatic role assignment
 - `setprefix` - Change bot prefix
 - `setlogs`, `setmodlogs` - Configure logging channels
@@ -142,11 +147,21 @@ Make sure these are enabled in Discord Developer Portal:
 - Guild Voice States
 
 ## Recent Changes
+- **Nov 12, 2025**: Professional configuration system added
+  - Created `config` command - View complete server configuration
+  - Created `dashboard` command - Full control panel with server stats
+  - Created `setup` command - Interactive configuration guide
+  - Created `setcolor` command - Customize embed colors per server (12 presets + hex)
+  - Created `resetconfig` command - Safe configuration reset
+  - Improved `help` command - Better organization and visuals
+  - Added database migration system for safe schema updates
+  - Added per-guild embed color customization
+  - Total commands: 70 (professional-grade protection/moderation)
+
 - **Nov 12, 2025**: Command cleanup and optimization
   - Removed non-essential commands (afk, avatar, banner, calc, editsnipe, poll, pollmulti, remind, snipe, suggest, timezone, translate, profile)
   - Cleaned up database schema (removed afk_status and reminders tables)
   - Focused on core moderation, security, and administration features
-  - Total commands: 65 (all essential for protection/moderation)
   
 - **Nov 12, 2025**: Initial Replit setup complete
   - Installed all dependencies
