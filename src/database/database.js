@@ -72,21 +72,6 @@ class DB {
             voice_log BOOLEAN DEFAULT 0,
             updated_at TEXT
         )`).run();
-        
-        this.db.prepare(`CREATE TABLE IF NOT EXISTS reminders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT,
-            channel_id TEXT,
-            message TEXT,
-            remind_at TEXT,
-            created_at TEXT
-        )`).run();
-        
-        this.db.prepare(`CREATE TABLE IF NOT EXISTS afk_status (
-            user_id TEXT PRIMARY KEY,
-            reason TEXT,
-            since TEXT
-        )`).run();
     }
 
     addSanction(guild, user, type, reason, mod) {
