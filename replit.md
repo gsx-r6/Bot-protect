@@ -49,7 +49,7 @@ src/
 
 ### Commands List
 
-**Administration** (18 commands)
+**Administration** (19 commands)
 - `config` - View complete server configuration
 - `dashboard` - Complete control panel with stats
 - `setup` - Interactive setup guide
@@ -58,6 +58,7 @@ src/
 - `autorole`, `removeautorole` - Automatic role assignment
 - `rank` - Give or remove roles based on hierarchical permissions
 - `rankconfig` - Configure rank permissions and view available roles
+- `rankpanel` - Interactive panel for role management with buttons and menus
 - `setprefix` - Change bot prefix
 - `setlogs`, `setmodlogs` - Configure logging channels
 - `setwelcome`, `setgoodbye` - Configure welcome/goodbye messages
@@ -153,10 +154,11 @@ Make sure these are enabled in Discord Developer Portal:
 - **Nov 14, 2025**: Hierarchical rank system implemented
   - Created `rank` command - Assign/remove roles based on hierarchical permissions
   - Created `rankconfig` command - Configure rank permissions and view available roles
+  - Created `rankpanel` command - Interactive panel with buttons and dropdown menus
   - Added `RankPermissionService` - Manage complex role permission logic
   - Added `rank_permissions` database table for custom permission storage
   - Supports hierarchy-based permissions, exception roles, and restricted roles
-  - Total commands: 72
+  - Total commands: 73
 
 - **Nov 12, 2025**: Professional configuration system added
   - Created `config` command - View complete server configuration
