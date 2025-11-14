@@ -32,12 +32,13 @@ src/
 ### Database
 - **Type:** SQLite (file-based)
 - **Location:** `./data/haruka.db` (auto-created)
-- **Tables:** sanctions, tickets, warnings, guild_config, automod_config, logs_config, notes, user_data
+- **Tables:** sanctions, tickets, warnings, guild_config, automod_config, logs_config, notes, user_data, rank_permissions
 
 **Note:** If upgrading from an older version, you may have obsolete tables (`afk_status`, `reminders`) that can be safely ignored or dropped manually using SQLite commands if you want to clean up the database.
 
 ### Features
 - Advanced moderation (ban, kick, warn, mute, timeout, tempban, nuke, purge, slowmode)
+- Hierarchical rank system with custom permissions
 - Security systems (anti-raid, anti-spam, anti-nuke, anti-bot, anti-link, anti-flood, anti-mention, anti-edit, anti-joinraid)
 - Logging system (messages, joins, leaves, voice, mod actions)
 - Ticket system
@@ -48,13 +49,15 @@ src/
 
 ### Commands List
 
-**Administration** (16 commands)
+**Administration** (18 commands)
 - `config` - View complete server configuration
 - `dashboard` - Complete control panel with stats
 - `setup` - Interactive setup guide
 - `setcolor` - Customize embed colors (with presets)
 - `resetconfig` - Reset server configuration
 - `autorole`, `removeautorole` - Automatic role assignment
+- `rank` - Give or remove roles based on hierarchical permissions
+- `rankconfig` - Configure rank permissions and view available roles
 - `setprefix` - Change bot prefix
 - `setlogs`, `setmodlogs` - Configure logging channels
 - `setwelcome`, `setgoodbye` - Configure welcome/goodbye messages
@@ -147,6 +150,14 @@ Make sure these are enabled in Discord Developer Portal:
 - Guild Voice States
 
 ## Recent Changes
+- **Nov 14, 2025**: Hierarchical rank system implemented
+  - Created `rank` command - Assign/remove roles based on hierarchical permissions
+  - Created `rankconfig` command - Configure rank permissions and view available roles
+  - Added `RankPermissionService` - Manage complex role permission logic
+  - Added `rank_permissions` database table for custom permission storage
+  - Supports hierarchy-based permissions, exception roles, and restricted roles
+  - Total commands: 72
+
 - **Nov 12, 2025**: Professional configuration system added
   - Created `config` command - View complete server configuration
   - Created `dashboard` command - Full control panel with server stats

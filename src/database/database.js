@@ -76,6 +76,17 @@ class DB {
             updated_at TEXT
         )`).run();
         
+        this.db.prepare(`CREATE TABLE IF NOT EXISTS rank_permissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            guild_id TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            can_give_roles TEXT,
+            permission_type TEXT DEFAULT 'hierarchy',
+            position INTEGER,
+            updated_at TEXT,
+            UNIQUE(guild_id, role_id)
+        )`).run();
+        
         this._runMigrations();
     }
 
@@ -161,6 +172,34 @@ class DB {
         } else {
             this.db.prepare(`UPDATE guild_config SET ${key} = ?, updated_at = ? WHERE guild_id = ?`).run(value, new Date().toISOString(), guildId);
         }
+    }
+
+    getRankPermission(guildId, roleId) {
+        const stmt = this.db.prepare('SELECT * FROM rank_permissions WHERE guild_id = ? AND role_id = ?');
+        return stmt.get(guildId, roleId);
+    }
+
+    getAllRankPermissions(guildId) {
+        const stmt = this.db.prepare('SELECT * FROM rank_permissions WHERE guild_id = ? ORDER BY position DESC');
+        return stmt.all(guildId);
+    }
+
+    setRankPermission(guildId, roleId, canGiveRoles, permissionType = 'hierarchy', position = 0) {
+        const existing = this.getRankPermission(guildId, roleId);
+        const rolesJson = JSON.stringify(canGiveRoles || []);
+        
+        if (!existing) {
+            const stmt = this.db.prepare('INSERT INTO rank_permissions (guild_id, role_id, can_give_roles, permission_type, position, updated_at) VALUES (?,?,?,?,?,?)');
+            return stmt.run(guildId, roleId, rolesJson, permissionType, position, new Date().toISOString());
+        } else {
+            const stmt = this.db.prepare('UPDATE rank_permissions SET can_give_roles = ?, permission_type = ?, position = ?, updated_at = ? WHERE guild_id = ? AND role_id = ?');
+            return stmt.run(rolesJson, permissionType, position, new Date().toISOString(), guildId, roleId);
+        }
+    }
+
+    deleteRankPermission(guildId, roleId) {
+        const stmt = this.db.prepare('DELETE FROM rank_permissions WHERE guild_id = ? AND role_id = ?');
+        return stmt.run(guildId, roleId);
     }
 }
 
