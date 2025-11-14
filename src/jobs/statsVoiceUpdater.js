@@ -33,23 +33,27 @@ async function updateOnce(client, guild = null) {
             
             try {
                 await targetGuild.members.fetch();
-                onlineCount = targetGuild.members.cache.filter(m => m.presence && m.presence.status !== 'offline').size;
-                voiceCount = targetGuild.members.cache.filter(m => m.voice && m.voice.channel).size;
+                onlineCount = targetGuild.members.cache.filter(m => m.presence && m.presence.status !== 'offline').size || 0;
+                voiceCount = targetGuild.members.cache.filter(m => m.voice && m.voice.channel).size || 0;
             } catch (e) {
                 onlineCount = targetGuild.members.cache.filter(m => m.presence && m.presence.status !== 'offline').size || 0;
                 voiceCount = targetGuild.channels.cache
-                    .filter(c => c.isVoiceBased && c.members)
-                    .reduce((acc, ch) => acc + ch.members.size, 0);
+                    .filter(c => c.isVoiceBased() && c.members)
+                    .reduce((acc, ch) => acc + (ch.members?.size || 0), 0) || 0;
             }
+            
+            totalMembers = isNaN(totalMembers) ? 0 : totalMembers;
+            onlineCount = isNaN(onlineCount) ? 0 : onlineCount;
+            voiceCount = isNaN(voiceCount) ? 0 : voiceCount;
 
             let newName = '';
             
             if (id === membersChanId) {
-                newName = `👥 ・Membres : ${totalMembers}`;
+                newName = `👥 ・Membres : ${totalMembers || 0}`;
             } else if (id === onlineChanId) {
-                newName = `🌐 ・En ligne : ${onlineCount}`;
+                newName = `🌐 ・En ligne : ${onlineCount || 0}`;
             } else if (id === voiceChanId) {
-                newName = `🔊 ・En vocal : ${voiceCount}`;
+                newName = `🔊 ・En vocal : ${voiceCount || 0}`;
             }
 
             if (newName && channel.name !== newName) {
