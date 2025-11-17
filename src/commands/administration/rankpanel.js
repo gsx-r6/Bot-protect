@@ -25,12 +25,21 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Vous ne pouvez donner aucun rôle selon les permissions configurées.')] });
             }
 
-            const roleOptions = availableRoles.slice(0, 25).map(role => ({
-                label: role.name,
-                description: `Position: ${role.position}`,
-                value: role.id,
-                emoji: '🎭'
-            }));
+            // Pagination pour plus de 25 rôles (limite Discord)
+            const ROLES_PER_PAGE = 20;
+            let currentPage = 0;
+            const totalPages = Math.ceil(availableRoles.length / ROLES_PER_PAGE);
+
+            const getRoleOptionsForPage = (page) => {
+                const start = page * ROLES_PER_PAGE;
+                const end = start + ROLES_PER_PAGE;
+                return availableRoles.slice(start, end).map(role => ({
+                    label: role.name.substring(0, 100),
+                    description: `Position: ${role.position}`,
+                    value: role.id,
+                    emoji: '🎭'
+                }));
+            };
 
             const embed = new EmbedBuilder()
                 .setColor(color)
@@ -40,17 +49,38 @@ module.exports = {
                     { name: '📋 Étape 1', value: 'Sélectionnez un rôle à attribuer', inline: false },
                     { name: '👤 Étape 2', value: 'Mentionnez le membre dans le chat', inline: false },
                     { name: '✅ Étape 3', value: 'Cliquez sur "Ajouter" ou "Retirer"', inline: false },
-                    { name: '📊 Rôles disponibles', value: `${availableRoles.length} rôle(s)`, inline: true }
+                    { name: '📊 Rôles disponibles', value: `${availableRoles.length} rôle(s)`, inline: true },
+                    { name: '📄 Page', value: `${currentPage + 1}/${totalPages}`, inline: true }
                 )
                 .setFooter({ text: 'Le panel expire après 5 minutes d\'inactivité' })
                 .setTimestamp();
 
             const roleSelect = new StringSelectMenuBuilder()
                 .setCustomId('rank_role_select')
-                .setPlaceholder('Sélectionnez un rôle à attribuer')
-                .addOptions(roleOptions);
+                .setPlaceholder(`Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`)
+                .addOptions(getRoleOptionsForPage(currentPage));
 
             const row1 = new ActionRowBuilder().addComponents(roleSelect);
+
+            const prevButton = new ButtonBuilder()
+                .setCustomId('rank_prev_page')
+                .setLabel('◀ Précédent')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(currentPage === 0);
+
+            const nextButton = new ButtonBuilder()
+                .setCustomId('rank_next_page')
+                .setLabel('Suivant ▶')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(currentPage === totalPages - 1);
+
+            const pageButton = new ButtonBuilder()
+                .setCustomId('rank_page_info')
+                .setLabel(`Page ${currentPage + 1}/${totalPages}`)
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true);
+
+            const paginationRow = new ActionRowBuilder().addComponents(prevButton, pageButton, nextButton);
 
             const addButton = new ButtonBuilder()
                 .setCustomId('rank_add')
@@ -77,8 +107,10 @@ module.exports = {
                 .setEmoji('🚫');
 
             const row2 = new ActionRowBuilder().addComponents(addButton, removeButton, listButton, cancelButton);
+            
+            const row3 = new ActionRowBuilder().addComponents(paginationRow.components);
 
-            const panelMessage = await message.reply({ embeds: [embed], components: [row1, row2] });
+            const panelMessage = await message.reply({ embeds: [embed], components: [row1, row3, row2] });
 
             let selectedRole = null;
             let targetMember = null;
@@ -115,6 +147,85 @@ module.exports = {
             buttonCollector.on('collect', async (interaction) => {
                 if (interaction.user.id !== message.author.id) {
                     return interaction.reply({ content: '❌ Ce panel ne vous est pas destiné!', ephemeral: true });
+                }
+
+                // Gestion pagination
+                if (interaction.customId === 'rank_next_page') {
+                    if (currentPage < totalPages - 1) {
+                        currentPage++;
+                        const newRoleOptions = getRoleOptionsForPage(currentPage);
+                        const newRoleSelect = new StringSelectMenuBuilder()
+                            .setCustomId('rank_role_select')
+                            .setPlaceholder(`Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`)
+                            .addOptions(newRoleOptions);
+
+                        const newPrevButton = new ButtonBuilder()
+                            .setCustomId('rank_prev_page')
+                            .setLabel('◀ Précédent')
+                            .setStyle(ButtonStyle.Primary)
+                            .setDisabled(currentPage === 0);
+
+                        const newNextButton = new ButtonBuilder()
+                            .setCustomId('rank_next_page')
+                            .setLabel('Suivant ▶')
+                            .setStyle(ButtonStyle.Primary)
+                            .setDisabled(currentPage === totalPages - 1);
+
+                        const newPageButton = new ButtonBuilder()
+                            .setCustomId('rank_page_info')
+                            .setLabel(`Page ${currentPage + 1}/${totalPages}`)
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true);
+
+                        const newPaginationRow = new ActionRowBuilder().addComponents(newPrevButton, newPageButton, newNextButton);
+                        const newRow1 = new ActionRowBuilder().addComponents(newRoleSelect);
+
+                        await interaction.update({
+                            components: [newRow1, newPaginationRow, row2]
+                        });
+                    }
+                    return;
+                }
+
+                if (interaction.customId === 'rank_prev_page') {
+                    if (currentPage > 0) {
+                        currentPage--;
+                        const newRoleOptions = getRoleOptionsForPage(currentPage);
+                        const newRoleSelect = new StringSelectMenuBuilder()
+                            .setCustomId('rank_role_select')
+                            .setPlaceholder(`Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`)
+                            .addOptions(newRoleOptions);
+
+                        const newPrevButton = new ButtonBuilder()
+                            .setCustomId('rank_prev_page')
+                            .setLabel('◀ Précédent')
+                            .setStyle(ButtonStyle.Primary)
+                            .setDisabled(currentPage === 0);
+
+                        const newNextButton = new ButtonBuilder()
+                            .setCustomId('rank_next_page')
+                            .setLabel('Suivant ▶')
+                            .setStyle(ButtonStyle.Primary)
+                            .setDisabled(currentPage === totalPages - 1);
+
+                        const newPageButton = new ButtonBuilder()
+                            .setCustomId('rank_page_info')
+                            .setLabel(`Page ${currentPage + 1}/${totalPages}`)
+                            .setStyle(ButtonStyle.Secondary)
+                            .setDisabled(true);
+
+                        const newPaginationRow = new ActionRowBuilder().addComponents(newPrevButton, newPageButton, newNextButton);
+                        const newRow1 = new ActionRowBuilder().addComponents(newRoleSelect);
+
+                        await interaction.update({
+                            components: [newRow1, newPaginationRow, row2]
+                        });
+                    }
+                    return;
+                }
+
+                if (interaction.customId === 'rank_page_info') {
+                    return interaction.reply({ content: `Vous êtes à la page ${currentPage + 1} sur ${totalPages}`, ephemeral: true });
                 }
 
                 if (interaction.customId === 'rank_cancel') {

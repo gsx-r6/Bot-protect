@@ -1,183 +1,497 @@
-# Haruka Protect - Discord Bot
+# 🛡️ Bot-Protect - Discord Bot de Modération Ultra-Sécurisé
 
-## Overview
-Bot Discord professionnel de modération ultra-sécurisé avec fonctionnalités avancées de protection et d'administration.
+**Version :** 1.0.0  
+**Dernière mise à jour :** 17 Novembre 2025  
+**État :** ✅ Restructuration Complète
 
-**Current State:** Configured and running on Replit  
-**Last Updated:** November 12, 2025
+---
 
-## Project Architecture
+## 📚 Table des Matières
 
-### Technology Stack
-- **Runtime:** Node.js 18.x
-- **Framework:** Discord.js v14
-- **Database:** SQLite3 (better-sqlite3)
-- **Logging:** Winston
-- **Package Manager:** npm
+1. [Démarrage Rapide](#-démarrage-rapide)
+2. [Architecture](#-architecture)
+3. [Fonctionnalités](#-fonctionnalités)
+4. [Installation](#-installation)
+5. [Configuration](#-configuration)
+6. [Utilisation du Logger](#-utilisation-du-logger)
+7. [Structure des Données](#-structure-des-données)
+8. [Dépannage](#-dépannage)
+9. [Documentation](#-documentation)
 
-### Project Structure
-```
-src/
-├── commands/        # Bot commands (moderation, utility, admin, etc.)
-├── core/           # Core bot client and initialization
-├── database/       # SQLite database management
-├── events/         # Discord event handlers
-├── handlers/       # Command, event, permission handlers
-├── jobs/           # Background tasks (stats updater)
-├── security/       # Security modules (anti-raid, anti-spam, etc.)
-├── services/       # Service layer (automod, cache, config)
-└── utils/          # Utilities and helpers
+---
+
+## 🚀 Démarrage Rapide
+
+### Installation
+```bash
+npm install
 ```
 
-### Database
-- **Type:** SQLite (file-based)
-- **Location:** `./data/haruka.db` (auto-created)
-- **Tables:** sanctions, tickets, warnings, guild_config, automod_config, logs_config, notes, user_data, rank_permissions
+### Lancement
+```bash
+npm start              # Production
+npm run dev           # Développement (avec nodemon)
+```
 
-**Note:** If upgrading from an older version, you may have obsolete tables (`afk_status`, `reminders`) that can be safely ignored or dropped manually using SQLite commands if you want to clean up the database.
+### Vérification
+```bash
+node validate.js      # Valider la structure
+cat data/logs/combined.log  # Voir les logs
+```
 
-### Features
-- Advanced moderation (ban, kick, warn, mute, timeout, tempban, nuke, purge, slowmode)
-- Hierarchical rank system with custom permissions
-- Security systems (anti-raid, anti-spam, anti-nuke, anti-bot, anti-link, anti-flood, anti-mention, anti-edit, anti-joinraid)
-- Logging system (messages, joins, leaves, voice, mod actions)
-- Ticket system
-- Auto-role and verification
-- Statistics tracking
-- Server and role information
-- Staff management (notes, reports, broadcast)
+---
 
-### Commands List
+## 🏗️ Architecture
 
-**Administration** (19 commands)
-- `config` - View complete server configuration
-- `dashboard` - Complete control panel with stats
-- `setup` - Interactive setup guide
-- `setcolor` - Customize embed colors (with presets)
-- `resetconfig` - Reset server configuration
-- `autorole`, `removeautorole` - Automatic role assignment
-- `rank` - Give or remove roles based on hierarchical permissions
-- `rankconfig` - Configure rank permissions and view available roles
-- `rankpanel` - Interactive panel for role management with buttons and menus
-- `setprefix` - Change bot prefix
-- `setlogs`, `setmodlogs` - Configure logging channels
-- `setwelcome`, `setgoodbye` - Configure welcome/goodbye messages
-- `setverif` - Configure verification system
-- `setup-stats` - Setup statistics voice channels
-- `maintenance` - Toggle maintenance mode
-- `restartbot` - Restart the bot
+### Stack Technologique
+- **Runtime :** Node.js 18+
+- **Framework :** Discord.js v14
+- **Base de données :** SQLite3 (better-sqlite3)
+- **Logger :** Système personnalisé (chalk + fichiers)
+- **Gestionnaire paquets :** npm
 
-**Moderation** (17 commands)
-- `ban`, `unban`, `tempban` - Ban management
-- `kick` - Kick members
-- `mute`, `unmute` - Mute management
-- `timeout` - Timeout members
-- `warn`, `delwarn`, `warnings`, `checkwarns` - Warning system
-- `lock-channel`, `unlock` - Channel locking
-- `clear`, `purge` - Message deletion
-- `nuke` - Channel recreation
-- `slowmode` - Set channel slowmode
+### Structure du Projet
 
-**Security** (11 commands)
-- `antibot`, `antispam`, `antilink`, `antiflood` - Auto-moderation toggles
-- `antimention`, `antiedit`, `antijoinraid`, `antinuke` - Advanced protection
-- `verify` - Manual verification
-- `checkperms` - Check permissions
-- `security-check` - Run security audit
+```
+Bot-protect/
+│
+├── src/                          # Code source
+│   ├── commands/                 # Commandes Discord
+│   │   ├── administration/       # Admin commands
+│   │   ├── moderation/          # Mod commands
+│   │   ├── security/            # Security commands
+│   │   ├── information/          # Info commands
+│   │   ├── logging/             # Logging commands
+│   │   ├── staff/               # Staff commands
+│   │   ├── system/              # System commands
+│   │   └── utility/             # Utility commands
+│   │
+│   ├── core/                     # Cœur du bot
+│   │   ├── index.js             # Point d'entrée
+│   │   ├── client.js            # Client Discord.js
+│   │   └── envLoader.js         # Chargement .env
+│   │
+│   ├── database/                # Gestion BDD
+│   │   └── database.js          # Classe Database
+│   │
+│   ├── events/                  # Gestionnaires événements
+│   │   ├── client/              # Événements bot
+│   │   ├── guild/               # Événements serveur
+│   │   └── message/             # Événements messages
+│   │
+│   ├── handlers/                # Gestionnaires
+│   │   ├── commandHandler.js
+│   │   ├── eventHandler.js
+│   │   ├── cooldownHandler.js
+│   │   └── permissionHandler.js
+│   │
+│   ├── jobs/                    # Tâches programmées
+│   │   └── statsVoiceUpdater.js
+│   │
+│   ├── security/                # Modules sécurité
+│   │   ├── antiBot.js
+│   │   ├── antiRaid.js
+│   │   ├── antiSpam.js
+│   │   ├── memberProtector.js
+│   │   ├── roleProtector.js
+│   │   └── securityAudit.js
+│   │
+│   ├── services/                # Services
+│   │   ├── AutomodService.js
+│   │   ├── CacheService.js
+│   │   ├── ConfigService.js
+│   │   └── RankPermissionService.js
+│   │
+│   └── utils/                   # Utilitaires
+│       ├── logger.js            # Logger personnalisé
+│       ├── embeds.js            # Constructeurs embeds
+│       └── validators.js        # Validateurs
+│
+├── data/                         # Données générées (runtime)
+│   ├── logs/                    # 📊 Logs du bot
+│   │   ├── combined.log         # Tous les logs
+│   │   ├── error.log            # Erreurs uniquement
+│   │   └── debug.log            # Debug (si activé)
+│   │
+│   ├── database/                # 🗄️ Base de données
+│   │   └── haruka.db            # SQLite
+│   │
+│   ├── cache/                   # 💾 Cache temporaire
+│   └── backups/                 # 💿 Sauvegardes
+│
+├── tests/                        # Tests
+│   └── serverinfo.test.js
+│
+├── .env.example                 # Template variables env
+├── .env                         # Variables d'environnement (git ignored)
+├── .eslintrc.json              # Configuration ESLint
+├── .gitignore                  # Fichiers ignorés Git
+├── package.json                # Dépendances
+├── README.md                   # Ce fichier
+├── QUICK_START.md              # Guide rapide (2 min)
+├── LOGGER_GUIDE.md             # Guide du logger
+├── CHANGES_LIST.md             # Liste des changements
+└── SECURITY.md                 # Politique sécurité
+```
 
-**Logging** (6 commands)
-- `joinlog`, `leavelog` - Member join/leave logging
-- `messagelog` - Message edit/delete logging
-- `voicelog` - Voice channel activity logging
-- `modlog` - Moderation actions logging
-- `logstatus` - View logging configuration
+---
 
-**Staff** (4 commands)
-- `broadcast` - Send announcements
-- `notes` - Manage member notes
-- `report` - Report system
-- `stafflist` - List staff members
+## ✨ Fonctionnalités
 
-**Information** (1 command)
-- `roleinfo` - Display role information
+### 🛡️ Modération
+- Ban, Kick, Warn, Mute, Timeout, TempBan, Nuke, Purge, Slowmode
+- Système de sanctions complet
+- Checkwarns, Delwarn, Warnings
+- Anti-link, Anti-spam, Anti-flood, Anti-mention
+- Anti-raid, Anti-nuke, Anti-bot
+- Anti-edit, Anti-joinraid
 
-**Utility** (13 commands)
-- `help` - Command list and help
-- `ping` - Bot latency
-- `uptime` - Bot uptime
-- `botinfo` - Bot information
-- `serverinfo` - Server information
-- `userinfo` - User information
-- `stats` - Server statistics
-- `membercount`, `channelcount`, `rolecount` - Count commands
-- `embed` - Create custom embeds
-- `say` - Make bot send message
-- `invite` - Bot invite link
-- `ticket` - Ticket system
-- `support` - Support information
+### 📊 Système de Ranks
+- Hiérarchie de rôles personnalisée
+- Permissions granulaires
+- Panel interactif avec pagination
+- Gestion des autorisations par rôle
 
-**System** (2 commands)
-- `reload` - Reload commands
-- `shutdown` - Shutdown the bot
+### 📝 Logging
+- Logs des messages supprimés
+- Logs des arrivées/départs
+- Logs des actions vocales
+- Logs des modérations
+- Séparation erreurs/info/debug
 
-## Configuration
+### 🎟️ Tickets
+- Création/Gestion automatique
+- Support complet
 
-### Required Environment Variables
-- `TOKEN` - Discord bot token (from Discord Developer Portal)
-- `OWNER_ID` - Discord user ID of the bot owner
+### ✅ Administration
+- Auto-role
+- Vérification des membres
+- Statut configurables
+- Setup serveur
 
-### Optional Environment Variables
-- `PREFIX` - Command prefix (default: `+`)
-- `EMBED_COLOR` - Embed color (default: `#FF69B4`)
-- `STATS_CHANNEL_MEMBERS` - Voice channel ID for member stats
-- `STATS_CHANNEL_ONLINE` - Voice channel ID for online stats  
-- `STATS_CHANNEL_VOICE` - Voice channel ID for voice stats
-- `STATS_UPDATE_INTERVAL` - Stats update interval in seconds (default: 300)
-- `SECURITY_AUDIT_ON_START` - Run security audit on startup (default: false)
-- `LOG_LEVEL` - Logging level (default: info)
+### 👥 Staff
+- Notes sur utilisateurs
+- Rapports
+- Broadcasts
+- Listes staff
 
-## Running the Bot
+### 🧠 Services Avancés
+- AutoMod (détection spam, flood, etc.)
+- Cache performant
+- Configuration persistante
+- Audit de sécurité
 
-### Development
-The bot runs automatically via the configured workflow using `npm start`.
+---
 
-### Required Discord Intents
-Make sure these are enabled in Discord Developer Portal:
-- Guilds
-- Guild Members (privileged)
-- Guild Messages
-- Message Content (privileged)
-- Guild Presences (privileged)
-- Guild Voice States
+## 📥 Installation
 
-## Recent Changes
-- **Nov 14, 2025**: Hierarchical rank system implemented
-  - Created `rank` command - Assign/remove roles based on hierarchical permissions
-  - Created `rankconfig` command - Configure rank permissions and view available roles
-  - Created `rankpanel` command - Interactive panel with buttons and dropdown menus
-  - Added `RankPermissionService` - Manage complex role permission logic
-  - Added `rank_permissions` database table for custom permission storage
-  - Supports hierarchy-based permissions, exception roles, and restricted roles
-  - Total commands: 73
+### Prérequis
+- Node.js 18+ ([nodejs.org](https://nodejs.org))
+- npm 8+
+- Un serveur Discord
+- Token Discord Bot
 
-- **Nov 12, 2025**: Professional configuration system added
-  - Created `config` command - View complete server configuration
-  - Created `dashboard` command - Full control panel with server stats
-  - Created `setup` command - Interactive configuration guide
-  - Created `setcolor` command - Customize embed colors per server (12 presets + hex)
-  - Created `resetconfig` command - Safe configuration reset
-  - Improved `help` command - Better organization and visuals
-  - Added database migration system for safe schema updates
-  - Added per-guild embed color customization
-  - Total commands: 70 (professional-grade protection/moderation)
+### Étapes
 
-- **Nov 12, 2025**: Command cleanup and optimization
-  - Removed non-essential commands (afk, avatar, banner, calc, editsnipe, poll, pollmulti, remind, snipe, suggest, timezone, translate, profile)
-  - Cleaned up database schema (removed afk_status and reminders tables)
-  - Focused on core moderation, security, and administration features
-  
-- **Nov 12, 2025**: Initial Replit setup complete
-  - Installed all dependencies
-  - Configured workflow for bot execution
-  - Set up environment variables (TOKEN, OWNER_ID)
-  - Database auto-initialization on first run
+#### 1. Cloner le repository
+```bash
+git clone <repository-url>
+cd Bot-protect
+```
+
+#### 2. Installer les dépendances
+```bash
+npm install
+```
+
+#### 3. Configurer les variables d'environnement
+```bash
+cp .env.example .env
+# Éditer .env avec vos paramètres
+```
+
+#### 4. Lancer le bot
+```bash
+npm start
+```
+
+---
+
+## ⚙️ Configuration
+
+### Variables d'Environnement (.env)
+
+```env
+# Bot
+DISCORD_TOKEN=votre_token_ici
+CLIENT_ID=votre_client_id
+
+# Database
+DATABASE_TYPE=sqlite
+SQLITE_PATH=data/database/haruka.db
+
+# Logs
+LOG_LEVEL=info              # info, debug, warn, error
+
+# Sécurité
+SECURITY_AUDIT_ON_START=false
+SECURITY_BLOCK_ON_VULNERABILITIES=false
+```
+
+### Structure des Données
+
+**Base de données (SQLite) - `data/database/haruka.db`**
+
+Tables principales :
+- `guild_config` - Configuration par serveur
+- `warnings` - Système d'avertissements
+- `sanctions` - Bans/kicks
+- `tickets` - Système de tickets
+- `notes` - Notes staff
+- `rank_permissions` - Permissions de ranks
+- `user_data` - Données utilisateurs
+
+---
+
+## 🎨 Utilisation du Logger
+
+### Niveaux de Log
+
+```javascript
+const logger = require('./utils/logger');
+
+logger.info('Message informatif');           // Bleu
+logger.success('Opération réussie');         // Vert
+logger.warn('Avertissement');                // Jaune
+logger.error('Erreur critique');             // Rouge
+logger.debug('Info de débogage');            // Magenta
+logger.command('Commande exécutée');         // Cyan
+```
+
+### Fichiers Logs
+
+Les logs sont sauvegardés dans `data/logs/` :
+- `combined.log` - Tous les logs
+- `error.log` - Erreurs uniquement
+- `debug.log` - Debug (si `LOG_LEVEL=debug`)
+
+### Monitoring
+
+```bash
+# Voir les logs en temps réel (Linux/Mac)
+tail -f data/logs/combined.log
+
+# Voir les logs (Windows)
+Get-Content data/logs/combined.log -Wait
+
+# Voir seulement les erreurs
+cat data/logs/error.log
+```
+
+**Pour plus de détails → Voir `LOGGER_GUIDE.md`**
+
+---
+
+## 📊 Structure des Données
+
+### Schéma Base de Données
+
+```sql
+-- Configuration du serveur
+CREATE TABLE guild_config (
+    guild_id TEXT PRIMARY KEY,
+    prefix TEXT DEFAULT '+',
+    welcome_channel TEXT,
+    log_channel TEXT,
+    modlog_channel TEXT,
+    ...
+);
+
+-- Avertissements
+CREATE TABLE warnings (
+    id INTEGER PRIMARY KEY,
+    guild_id TEXT,
+    user_id TEXT,
+    moderator_id TEXT,
+    reason TEXT,
+    created_at TEXT
+);
+
+-- Permissions de ranks
+CREATE TABLE rank_permissions (
+    guild_id TEXT,
+    role_id TEXT,
+    can_give_roles TEXT,  -- JSON array
+    PRIMARY KEY (guild_id, role_id)
+);
+```
+
+---
+
+## 🧪 Validation & Tests
+
+### Valider la structure complète
+```bash
+node validate.js
+```
+
+Résultat attendu : **🟢 VALIDATION RÉUSSIE - 26/26 tests**
+
+### Tests automatisés
+```bash
+npm test
+```
+
+### Audit de sécurité
+```bash
+npm run security-audit
+```
+
+---
+
+## 🐛 Dépannage
+
+### Problème : Le bot ne démarre pas
+
+**Solution :**
+1. Vérifier le token Discord : `echo $DISCORD_TOKEN`
+2. Vérifier les permissions du bot sur Discord
+3. Vérifier les logs : `cat data/logs/error.log`
+
+### Problème : Les logs ne s'affichent pas
+
+**Solution :**
+```bash
+# Vérifier que le dossier existe
+ls -la data/logs/
+
+# Vérifier les permissions
+chmod 755 data/logs
+
+# Relancer le bot
+npm start
+```
+
+### Problème : Database locked
+
+**Solution :**
+```bash
+# Tuer tous les processus node
+pkill node          # Linux/Mac
+taskkill /IM node.exe /F  # Windows
+
+# Relancer
+npm start
+```
+
+### Problème : Chalk n'est pas trouvé
+
+**Solution :**
+```bash
+npm install chalk@4.1.2
+npm start
+```
+
+---
+
+## 📚 Documentation
+
+### Documents Essentiels
+
+| Document | Contenu | Lire si... |
+|----------|---------|-----------|
+| **QUICK_START.md** | Démarrage 2 minutes | 👉 Vous êtes pressé |
+| **LOGGER_GUIDE.md** | Guide complet du logger | 👉 Vous codez |
+| **CHANGES_LIST.md** | Liste détaillée des changements | 👉 Vous auditez |
+| **SECURITY.md** | Politique de sécurité | 👉 Vous déployez |
+
+### Scripts Utiles
+
+```bash
+npm start              # Lancer le bot
+npm run dev           # Mode développement
+npm test              # Tests automatisés
+npm run lint          # Linter le code
+npm run security-audit # Audit sécurité
+node validate.js      # Valider la structure
+node status.js        # Voir le statut
+```
+
+---
+
+## 🔐 Sécurité
+
+**Points importants :**
+- ✅ Ne jamais commiter le `.env` avec les tokens
+- ✅ Utiliser des variables d'environnement
+- ✅ Mettre à jour les dépendances régulièrement
+- ✅ Activer l'audit de sécurité en production
+
+**Voir `SECURITY.md` pour plus de détails**
+
+---
+
+## 📝 Licence
+
+MIT - Voir LICENSE pour plus de détails
+
+---
+
+## 🤝 Contribution
+
+Les contributions sont bienvenues !
+
+1. Fork le projet
+2. Créer une branche feature (`git checkout -b feature/AmazingFeature`)
+3. Commit les changements (`git commit -m 'Add AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
+
+---
+
+## 📞 Support
+
+- 📖 **Documentation** → Voir les fichiers .md ci-dessus
+- 🧪 **Validation** → `node validate.js`
+- 📊 **Logs** → `cat data/logs/combined.log`
+- 🐛 **Problèmes** → Voir section Dépannage
+
+---
+
+## 📋 Checklist de Déploiement
+
+- [ ] `.env` configuré avec token
+- [ ] `npm install` exécuté
+- [ ] `node validate.js` = ✅ OK
+- [ ] Permissions bot Discord vérifiées
+- [ ] `data/logs/` créé automatiquement au démarrage
+- [ ] Logs s'affichent en couleurs
+- [ ] Bot démarre sans erreurs
+
+---
+
+## 🎯 Résumé Restructuration 2025
+
+**Changements majeurs :**
+- ✅ Logger.js retapé entièrement
+- ✅ Structure `src/` + `data/` séparée
+- ✅ Pagination rankpanel (tous les rôles)
+- ✅ .gitignore optimisé
+- ✅ 26/26 validations automatiques
+
+**Documentation :**
+- ✅ 4 guides créés (QUICK_START, LOGGER, CHANGES, SECURITY)
+- ✅ Scripts de validation et statut
+- ✅ README.md centralisé
+
+---
+
+**✨ Le bot est prêt pour le déploiement !**
+
+```bash
+npm install && npm start
+```
+
+---
+
+*Dernière mise à jour : 17 Novembre 2025*
