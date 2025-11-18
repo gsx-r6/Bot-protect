@@ -15,8 +15,7 @@ class HarukaClient extends Client {
             GatewayIntentBits.MessageContent,
             GatewayIntentBits.GuildMessageReactions,
             GatewayIntentBits.GuildPresences,
-            GatewayIntentBits.GuildVoiceStates,
-            GatewayIntentBits.GuildAuditLog,
+            GatewayIntentBits.GuildVoiceStates
         ] });
         this.commands = new Collection();
         this.aliases = new Collection();
