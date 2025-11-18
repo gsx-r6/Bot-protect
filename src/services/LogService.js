@@ -4,6 +4,13 @@
  */
 
 const { EmbedBuilder, ChannelType } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+
+const LOGS_DIR = path.join(process.cwd(), 'data', 'logs');
+if (!fs.existsSync(LOGS_DIR)) {
+    try { fs.mkdirSync(LOGS_DIR, { recursive: true }); } catch (e) { /* ignore */ }
+}
 
 class LogService {
     constructor(client) {
@@ -303,20 +310,52 @@ class LogService {
      * Envoyer l'embed au canal spécifié
      */
     async sendToChannel(guild, channelId, embed) {
-        if (!channelId) return false;
+        // Si aucun channel configuré, fallback vers fichier local
+        if (!channelId) {
+            await this.writeLocalLog(embed);
+            return true;
+        }
 
         try {
             const channel = await guild.channels.fetch(channelId);
             if (!channel || channel.type !== ChannelType.GuildText) {
-                console.error(`❌ Canal de log invalide: ${channelId}`);
+                console.error(`❌ Canal de log invalide: ${channelId} — fallback fichier`);
+                await this.writeLocalLog(embed);
                 return false;
             }
 
             await channel.send({ embeds: [embed] });
             return true;
         } catch (error) {
-            console.error(`❌ Erreur lors de l'envoi du log:`, error.message);
+            console.error(`❌ Erreur lors de l'envoi du log:`, error.message, '— fallback fichier');
+            await this.writeLocalLog(embed);
             return false;
+        }
+    }
+
+    async writeLocalLog(embed) {
+        try {
+            const data = this.formatEmbed(embed);
+            const filePath = path.join(LOGS_DIR, `${new Date().toISOString().split('T')[0]}.log`);
+            fs.appendFileSync(filePath, data + '\n\n', { encoding: 'utf8' });
+            return true;
+        } catch (e) {
+            console.error('❌ Impossible d\'écrire le log localement:', e.message);
+            return false;
+        }
+    }
+
+    formatEmbed(embed) {
+        try {
+            // embed peut être un EmbedBuilder -> toJSON() disponible
+            const obj = typeof embed.toJSON === 'function' ? embed.toJSON() : (embed || {});
+            const title = obj.title || '';
+            const timestamp = obj.timestamp || new Date().toISOString();
+            const fields = (obj.fields || []).map(f => `${f.name}: ${f.value}`).join('\n');
+            const description = obj.description || '';
+            return `[${timestamp}] ${title}\n${description}\n${fields}`;
+        } catch (e) {
+            return `[${new Date().toISOString()}] Log embed (non-serialisable)`;
         }
     }
 
