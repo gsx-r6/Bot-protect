@@ -33,12 +33,26 @@ module.exports = {
             const getRoleOptionsForPage = (page) => {
                 const start = page * ROLES_PER_PAGE;
                 const end = start + ROLES_PER_PAGE;
-                return availableRoles.slice(start, end).map(role => ({
-                    label: role.name.substring(0, 100),
-                    description: `Position: ${role.position}`,
+                return availableRoles.slice(start, end).map((role, idx) => ({
+                    label: role.name.substring(0, 95),
+                    description: `Position: ${role.position} | #${start + idx + 1}`,
                     value: role.id,
                     emoji: '🎭'
                 }));
+            };
+
+            // Helper pour créer un menu de sélection avec limite Discord (max 25 options)
+            const createRoleSelectMenu = (roles, customId = 'rank_role_select', placeholder = null) => {
+                const options = roles.slice(0, 25).map((role, idx) => ({
+                    label: role.name.substring(0, 95),
+                    description: `Position: ${role.position} | #${idx + 1}`,
+                    value: role.id,
+                    emoji: '🎭'
+                }));
+                return new StringSelectMenuBuilder()
+                    .setCustomId(customId)
+                    .setPlaceholder(placeholder || 'Sélectionnez un rôle')
+                    .addOptions(options);
             };
 
             const renderPanelEmbed = (page = currentPage) => {
@@ -141,12 +155,15 @@ module.exports = {
                 if (interaction.customId === 'rank_role_select') {
                     selectedRole = message.guild.roles.cache.get(interaction.values[0]);
                     
-                    const updateEmbed = EmbedBuilder.from(embed)
+                    const updateEmbed = renderPanelEmbed(currentPage)
+                        .setColor('#00AA00')
+                        .setTitle('✅ Rôle sélectionné')
                         .setFields(
-                            { name: '✅ Rôle sélectionné', value: `${selectedRole}`, inline: false },
+                            { name: '🎭 Rôle', value: `${selectedRole}`, inline: false },
                             { name: '👤 Étape suivante', value: 'Mentionnez un membre dans le chat puis cliquez sur "Ajouter" ou "Retirer"', inline: false },
-                            { name: '📊 Rôles disponibles', value: `${availableRoles.length} rôle(s)`, inline: true }
-                        );
+                            { name: '⏱️ Rappel', value: `Le panel expire dans 5 minutes`, inline: true }
+                        )
+                        .setTimestamp();
 
                     await interaction.update({ embeds: [updateEmbed] });
                 }
@@ -231,7 +248,7 @@ module.exports = {
                 // Recherche de rôle (permet de taper un nom / id et d'afficher les correspondances)
                 if (interaction.customId === 'rank_search') {
                     await interaction.deferUpdate();
-                    const prompt = await message.channel.send({ embeds: [embeds.info('🔎 Envoyez le nom (ou une partie) du rôle à rechercher, ou l\'ID du rôle.')], allowedMentions: { repliedUser: false } });
+                    const prompt = await message.channel.send({ embeds: [embeds.info('🔎 Envoyez le nom (ou une partie) du rôle à rechercher, ou l\'ID du rôle. Tapez `cancel` ou `retour` pour revenir.')], allowedMentions: { repliedUser: false } });
 
                     const msgFilter = m => m.author.id === message.author.id;
                     const queryCollector = message.channel.createMessageCollector({ filter: msgFilter, time: 60000, max: 1 });
@@ -240,6 +257,15 @@ module.exports = {
                         const q = m.content.trim();
                         if (!q) return message.channel.send({ embeds: [embeds.error('Recherche vide.')], allowedMentions: { repliedUser: false } });
 
+                        // Retour au panel normal
+                        if (q.toLowerCase() === 'cancel' || q.toLowerCase() === 'retour') {
+                            const pageRoles = availableRoles.slice(currentPage * ROLES_PER_PAGE, (currentPage + 1) * ROLES_PER_PAGE);
+                            const normalSelect = createRoleSelectMenu(pageRoles, 'rank_role_select', `Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`);
+                            const normalRow = new ActionRowBuilder().addComponents(normalSelect);
+                            await panelMessage.edit({ embeds: [renderPanelEmbed(currentPage)], components: [normalRow, row3, row2] });
+                            return message.channel.send({ embeds: [embeds.info('ℹ️ Retour au panel principal.')], allowedMentions: { repliedUser: false } });
+                        }
+
                         // Recherche (nom partiel ou ID)
                         const matches = availableRoles.filter(r => r.name.toLowerCase().includes(q.toLowerCase()) || r.id === q);
 
@@ -247,18 +273,12 @@ module.exports = {
                             return message.channel.send({ embeds: [embeds.warn('Aucun rôle trouvé pour cette recherche.')], allowedMentions: { repliedUser: false } });
                         }
 
-                        const options = matches.slice(0, 25).map(r => ({ label: r.name.substring(0, 100), value: r.id, description: `Position: ${r.position}` }));
-
-                        const searchSelect = new StringSelectMenuBuilder()
-                            .setCustomId('rank_role_select')
-                            .setPlaceholder(`Résultats: ${matches.length} rôle(s) — sélectionner`)
-                            .addOptions(options);
-
+                        // Limiter à 25 et afficher un avertissement si plus
+                        const displayCount = Math.min(matches.length, 25);
+                        const searchSelect = createRoleSelectMenu(matches, 'rank_role_select', `Résultats: ${matches.length} rôle(s)`);
                         const searchRow = new ActionRowBuilder().addComponents(searchSelect);
 
-                        const updatedEmbed = renderPanelEmbed(currentPage);
-                        await panelMessage.edit({ embeds: [updatedEmbed], components: [searchRow, row3, row2] });
-                        await message.channel.send({ embeds: [embeds.success(`✅ ${Math.min(matches.length, 25)} résultat(s) affichés.`)], allowedMentions: { repliedUser: false } });
+                        const updatedEmbed = renderPanelEmbed(currentPage)\n                            .setColor('#0099FF')\n                            .setTitle(`🔎 Résultats: ${matches.length} rôle(s)`);\n                        if (matches.length > 25) {\n                            updatedEmbed.setDescription(`Affichage des 25 premiers résultats. Affinez votre recherche pour plus de précision.`);\n                        }\n\n                        await panelMessage.edit({ embeds: [updatedEmbed], components: [searchRow, row3, row2] });\n                        await message.channel.send({ embeds: [embeds.success(`✅ ${displayCount} résultat(s) affichés${matches.length > 25 ? ` sur ${matches.length}` : ''}.`)], allowedMentions: { repliedUser: false } });
                     });
 
                     queryCollector.on('end', collected => {
