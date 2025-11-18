@@ -26,7 +26,19 @@ module.exports = {
             }
             
             await target.timeout(null, `Unmute par: ${message.author.tag}`);
-            
+
+            // Log vers LogService
+            try {
+                if (client.logs) {
+                    await client.logs.logModeration(message.guild, 'UNMUTE', {
+                        user: target.user,
+                        moderator: message.author
+                    });
+                }
+            } catch (e) {
+                client.logger.error('[unmute] Error sending log:', e);
+            }
+
             const embed = embeds.moderation(
                 `✅ **Membre démute avec succès**\n\n` +
                 `**Membre:** ${target.user.tag}\n` +

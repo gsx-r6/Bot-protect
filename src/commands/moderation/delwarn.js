@@ -39,7 +39,21 @@ module.exports = {
             
             const warnToDelete = warnings[warnNumber - 1];
             db.deleteWarning(warnToDelete.id);
-            
+
+            // Log vers LogService
+            try {
+                if (client.logs) {
+                    await client.logs.logModeration(message.guild, 'DELWARN', {
+                        user: target.user,
+                        moderator: message.author,
+                        reason: warnToDelete.reason,
+                        extras: { warnId: warnToDelete.id }
+                    });
+                }
+            } catch (e) {
+                client.logger.error('[delwarn] Error sending log:', e);
+            }
+
             const embed = embeds.moderation(
                 `✅ **Avertissement #${warnNumber} supprimé avec succès**\n\n` +
                 `**Membre:** ${target.user.tag}\n` +

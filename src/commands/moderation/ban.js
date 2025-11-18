@@ -23,6 +23,15 @@ module.exports = {
 
             await target.ban({ reason: `${banReason} — par ${message.author.tag}` });
 
+            // Log vers LogService
+            if (client.logs) {
+                await client.logs.logModeration(message.guild, 'BAN', {
+                    user: target.user,
+                    moderator: message.author,
+                    reason: banReason
+                });
+            }
+
             await message.reply({ embeds: [embeds.success(`${target.user.tag} a été banni.`, 'Action: Ban').addFields({ name: 'Raison', value: banReason }, { name: 'Modérateur', value: message.author.tag })] });
 
             client.logger.command(`BAN: ${target.user.tag} by ${message.author.tag} in ${message.guild.id} - ${banReason}`);

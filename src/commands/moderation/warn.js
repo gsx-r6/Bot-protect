@@ -60,6 +60,16 @@ module.exports = {
                 // Impossible d'envoyer un MP
             }
 
+            // Log vers LogService
+            if (client.logs) {
+                await client.logs.logModeration(message.guild, 'WARN', {
+                    user: target.user,
+                    moderator: message.author,
+                    reason: reason,
+                    extras: { totalWarns }
+                });
+            }
+
             client.logger.command(`WARN: ${target.user.tag} by ${message.author.tag} - ${reason}`);
             
         } catch (err) {

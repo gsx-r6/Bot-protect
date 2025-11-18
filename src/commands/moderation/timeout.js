@@ -40,7 +40,21 @@ module.exports = {
             const reason = args.slice(2).join(' ') || 'Aucune raison fournie';
             
             await target.timeout(ms, `${reason} | Par: ${message.author.tag}`);
-            
+
+            // Log vers LogService
+            try {
+                if (client.logs) {
+                    await client.logs.logModeration(message.guild, 'TIMEOUT', {
+                        user: target.user,
+                        moderator: message.author,
+                        reason,
+                        duration
+                    });
+                }
+            } catch (e) {
+                client.logger.error('[timeout] Error sending log:', e);
+            }
+
             const embed = embeds.moderation(
                 `✅ **Membre mis en timeout avec succès**\n\n` +
                 `**Membre:** ${target.user.tag}\n` +

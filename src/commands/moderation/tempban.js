@@ -52,7 +52,21 @@ module.exports = {
             }
             
             await target.ban({ reason: `[TEMPBAN ${duration}] ${reason} | Par: ${message.author.tag}`, deleteMessageSeconds: 86400 });
-            
+
+            // Log vers LogService
+            try {
+                if (client.logs) {
+                    await client.logs.logModeration(message.guild, 'TEMPBAN', {
+                        user: target.user,
+                        moderator: message.author,
+                        reason,
+                        duration
+                    });
+                }
+            } catch (e) {
+                client.logger.error('[tempban] Error sending log:', e);
+            }
+
             setTimeout(async () => {
                 try {
                     await message.guild.members.unban(target.id, `Tempban expiré (${duration})`);
@@ -60,7 +74,7 @@ module.exports = {
                     client.logger.error('Erreur unban automatique:', e);
                 }
             }, ms);
-            
+
             const embed = embeds.moderation(
                 `✅ **Membre banni temporairement avec succès**\n\n` +
                 `**Membre:** ${target.user.tag}\n` +

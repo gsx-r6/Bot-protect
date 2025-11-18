@@ -30,6 +30,19 @@ module.exports = {
             try {
                 await message.guild.members.unban(userId, `${reason} | Par: ${message.author.tag}`);
                 
+                // Log vers LogService
+                try {
+                    if (client.logs) {
+                        await client.logs.logModeration(message.guild, 'UNBAN', {
+                            user: { id: userId },
+                            moderator: message.author,
+                            reason
+                        });
+                    }
+                } catch (e) {
+                    client.logger.error('[unban] Error sending log:', e);
+                }
+
                 const embed = embeds.moderation(
                     `✅ **Utilisateur débanni avec succès**\n\n` +
                     `**ID:** \`${userId}\`\n` +

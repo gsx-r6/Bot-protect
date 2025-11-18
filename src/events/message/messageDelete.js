@@ -2,6 +2,8 @@ const { Events } = require('discord.js');
 const CacheService = require('../../services/CacheService');
 const logger = require('../../utils/logger');
 
+// LogService via client.logs
+
 module.exports = {
     name: Events.MessageDelete,
     once: false,
@@ -13,6 +15,20 @@ module.exports = {
             
             CacheService.cacheDeletedMessage(message);
             logger.debug(`📝 Message deleted cached from ${message.author?.tag} in ${message.channel.id}`);
+
+            // Envoyer le log au canal approprié si configuré
+            try {
+                if (client.logs) {
+                    await client.logs.logMessage(message.guild, 'DELETE', {
+                        author: message.author,
+                        channel: message.channel,
+                        messageId: message.id,
+                        content: message.content
+                    });
+                }
+            } catch (e) {
+                logger.error('[MessageDelete] Error sending log:', e);
+            }
         } catch (error) {
             logger.error('[MessageDelete] Error:', error);
         }

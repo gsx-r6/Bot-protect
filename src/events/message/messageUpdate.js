@@ -2,6 +2,8 @@ const { Events } = require('discord.js');
 const CacheService = require('../../services/CacheService');
 const logger = require('../../utils/logger');
 
+// LogService via client.logs
+
 module.exports = {
     name: Events.MessageUpdate,
     once: false,
@@ -39,6 +41,21 @@ module.exports = {
             
             CacheService.cacheEditedMessage(oldMessageSnapshot, newMessage);
             logger.debug(`✏️ Message edit cached from ${newMessage.author?.tag} in ${newMessage.channel.id}`);
+
+            // Envoyer le log au canal approprié si configuré
+            try {
+                if (client.logs) {
+                    await client.logs.logMessage(newMessage.guild, 'EDIT', {
+                        author: newMessage.author,
+                        channel: newMessage.channel,
+                        messageId: newMessage.id,
+                        before: oldContent,
+                        after: newContent
+                    });
+                }
+            } catch (e) {
+                logger.error('[MessageUpdate] Error sending log:', e);
+            }
         } catch (error) {
             logger.error('[MessageUpdate] Error:', error);
         }

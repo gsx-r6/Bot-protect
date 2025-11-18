@@ -23,6 +23,15 @@ module.exports = {
 
             await target.kick(kickReason);
 
+            // Log vers LogService
+            if (client.logs) {
+                await client.logs.logModeration(message.guild, 'KICK', {
+                    user: target.user,
+                    moderator: message.author,
+                    reason: kickReason
+                });
+            }
+
             await message.reply({ embeds: [embeds.success(`${target.user.tag} a été expulsé.`, 'Action: Kick').addFields({ name: 'Raison', value: kickReason }, { name: 'Modérateur', value: message.author.tag })] });
 
             client.logger.command(`KICK: ${target.user.tag} by ${message.author.tag} in ${message.guild.id} - ${kickReason}`);

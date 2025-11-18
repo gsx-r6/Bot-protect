@@ -27,6 +27,16 @@ module.exports = {
 
             await target.timeout(durationMs, `${reasonText} — par ${message.author.tag}`);
 
+            // Log vers LogService
+            if (client.logs) {
+                await client.logs.logModeration(message.guild, 'MUTE', {
+                    user: target.user,
+                    moderator: message.author,
+                    reason: reasonText,
+                    duration: durationArg
+                });
+            }
+
             await message.reply({ embeds: [embeds.success(`${target.user.tag} a été rendu muet pour ${durationArg}.`, 'Action: Mute').addFields({ name: 'Raison', value: reasonText }, { name: 'Durée', value: durationArg })] });
 
             client.logger.command(`MUTE: ${target.user.tag} by ${message.author.tag} in ${message.guild.id} - ${durationArg} - ${reasonText}`);
