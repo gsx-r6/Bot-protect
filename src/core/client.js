@@ -3,6 +3,7 @@ const path = require('path');
 const commandHandler = require('../handlers/commandHandler');
 const eventHandler = require('../handlers/eventHandler');
 const logger = require('../utils/logger');
+const LogService = require('../services/LogService');
 
 class HarukaClient extends Client {
     constructor() {
@@ -15,11 +16,14 @@ class HarukaClient extends Client {
             GatewayIntentBits.GuildMessageReactions,
             GatewayIntentBits.GuildPresences,
             GatewayIntentBits.GuildVoiceStates,
+            GatewayIntentBits.GuildAuditLog,
         ] });
         this.commands = new Collection();
         this.aliases = new Collection();
         this.cooldowns = new Collection();
         this.logger = logger;
+        this.logs = null; // Sera initialisé au ready
+        
         // Attach runtime config
         try {
             this.config = require('../config/config');

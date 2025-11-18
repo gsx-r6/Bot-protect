@@ -9,6 +9,15 @@ module.exports = {
         try {
             logger.info(`➕ Nouveau membre: ${member.user.tag} dans ${member.guild.name}`);
             
+            // 📝 Envoyer au canal de logs "member"
+            if (client.logs) {
+                await client.logs.logMember(member.guild, 'JOIN', {
+                    user: member.user,
+                    memberCount: member.guild.memberCount
+                });
+            }
+            
+            // Mettre à jour les stats
             const statsJob = require('../../jobs/statsVoiceUpdater');
             if (statsJob && statsJob.updateOnce) {
                 await statsJob.updateOnce(client, member.guild);
