@@ -25,10 +25,10 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Vous ne pouvez donner aucun rôle selon les permissions configurées.')] });
             }
 
-            // Pagination pour plus de 25 rôles (limite Discord)
+            // Pagination pour naviguer dans les rôles et recherche
             const ROLES_PER_PAGE = 20;
             let currentPage = 0;
-            const totalPages = Math.ceil(availableRoles.length / ROLES_PER_PAGE);
+            const totalPages = Math.max(1, Math.ceil(availableRoles.length / ROLES_PER_PAGE));
 
             const getRoleOptionsForPage = (page) => {
                 const start = page * ROLES_PER_PAGE;
@@ -41,19 +41,22 @@ module.exports = {
                 }));
             };
 
-            const embed = new EmbedBuilder()
-                .setColor(color)
-                .setTitle('🎛️ Panel de Gestion des Rôles')
-                .setDescription('Utilisez les menus ci-dessous pour gérer les rôles des membres.')
-                .addFields(
-                    { name: '📋 Étape 1', value: 'Sélectionnez un rôle à attribuer', inline: false },
-                    { name: '👤 Étape 2', value: 'Mentionnez le membre dans le chat', inline: false },
-                    { name: '✅ Étape 3', value: 'Cliquez sur "Ajouter" ou "Retirer"', inline: false },
-                    { name: '📊 Rôles disponibles', value: `${availableRoles.length} rôle(s)`, inline: true },
-                    { name: '📄 Page', value: `${currentPage + 1}/${totalPages}`, inline: true }
-                )
-                .setFooter({ text: 'Le panel expire après 5 minutes d\'inactivité' })
-                .setTimestamp();
+            const renderPanelEmbed = (page = currentPage) => {
+                const e = new EmbedBuilder()
+                    .setColor(color)
+                    .setTitle('🎛️ Panel de Gestion des Rôles')
+                    .setDescription('Utilisez les menus ci-dessous pour gérer les rôles des membres.')
+                    .addFields(
+                        { name: '📋 Étape 1', value: 'Sélectionnez un rôle à attribuer', inline: false },
+                        { name: '👤 Étape 2', value: 'Mentionnez le membre dans le chat', inline: false },
+                        { name: '✅ Étape 3', value: 'Cliquez sur "Ajouter" ou "Retirer"', inline: false },
+                        { name: '📊 Rôles disponibles', value: `${availableRoles.length} rôle(s)`, inline: true },
+                        { name: '📄 Page', value: `${page + 1}/${totalPages}`, inline: true }
+                    )
+                    .setFooter({ text: 'Le panel expire après 5 minutes d\'inactivité' })
+                    .setTimestamp();
+                return e;
+            };
 
             const roleSelect = new StringSelectMenuBuilder()
                 .setCustomId('rank_role_select')
@@ -94,6 +97,11 @@ module.exports = {
                 .setStyle(ButtonStyle.Danger)
                 .setEmoji('❌');
 
+            const searchButton = new ButtonBuilder()
+                .setCustomId('rank_search')
+                .setLabel('🔎 Rechercher un rôle')
+                .setStyle(ButtonStyle.Primary);
+
             const listButton = new ButtonBuilder()
                 .setCustomId('rank_list')
                 .setLabel('Voir mes permissions')
@@ -106,11 +114,11 @@ module.exports = {
                 .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🚫');
 
-            const row2 = new ActionRowBuilder().addComponents(addButton, removeButton, listButton, cancelButton);
+            const row2 = new ActionRowBuilder().addComponents(addButton, removeButton, searchButton, listButton, cancelButton);
             
             const row3 = new ActionRowBuilder().addComponents(paginationRow.components);
 
-            const panelMessage = await message.reply({ embeds: [embed], components: [row1, row3, row2] });
+            const panelMessage = await message.reply({ embeds: [renderPanelEmbed()], components: [row1, row3, row2] });
 
             let selectedRole = null;
             let targetMember = null;
@@ -149,85 +157,50 @@ module.exports = {
                     return interaction.reply({ content: '❌ Ce panel ne vous est pas destiné!', ephemeral: true });
                 }
 
-                // Gestion pagination
-                if (interaction.customId === 'rank_next_page') {
-                    if (currentPage < totalPages - 1) {
-                        currentPage++;
-                        const newRoleOptions = getRoleOptionsForPage(currentPage);
-                        const newRoleSelect = new StringSelectMenuBuilder()
-                            .setCustomId('rank_role_select')
-                            .setPlaceholder(`Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`)
-                            .addOptions(newRoleOptions);
+                // Pagination (prev/next) — on met à jour aussi l'embed
+                if (interaction.customId === 'rank_next_page' || interaction.customId === 'rank_prev_page') {
+                    if (interaction.customId === 'rank_next_page' && currentPage < totalPages - 1) currentPage++;
+                    if (interaction.customId === 'rank_prev_page' && currentPage > 0) currentPage--;
 
-                        const newPrevButton = new ButtonBuilder()
-                            .setCustomId('rank_prev_page')
-                            .setLabel('◀ Précédent')
-                            .setStyle(ButtonStyle.Primary)
-                            .setDisabled(currentPage === 0);
+                    const newRoleOptions = getRoleOptionsForPage(currentPage);
+                    const newRoleSelect = new StringSelectMenuBuilder()
+                        .setCustomId('rank_role_select')
+                        .setPlaceholder(`Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`)
+                        .addOptions(newRoleOptions);
 
-                        const newNextButton = new ButtonBuilder()
-                            .setCustomId('rank_next_page')
-                            .setLabel('Suivant ▶')
-                            .setStyle(ButtonStyle.Primary)
-                            .setDisabled(currentPage === totalPages - 1);
+                    const newPrevButton = new ButtonBuilder()
+                        .setCustomId('rank_prev_page')
+                        .setLabel('◀ Précédent')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(currentPage === 0);
 
-                        const newPageButton = new ButtonBuilder()
-                            .setCustomId('rank_page_info')
-                            .setLabel(`Page ${currentPage + 1}/${totalPages}`)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(true);
+                    const newNextButton = new ButtonBuilder()
+                        .setCustomId('rank_next_page')
+                        .setLabel('Suivant ▶')
+                        .setStyle(ButtonStyle.Primary)
+                        .setDisabled(currentPage === totalPages - 1);
 
-                        const newPaginationRow = new ActionRowBuilder().addComponents(newPrevButton, newPageButton, newNextButton);
-                        const newRow1 = new ActionRowBuilder().addComponents(newRoleSelect);
+                    const newPageButton = new ButtonBuilder()
+                        .setCustomId('rank_page_info')
+                        .setLabel(`Page ${currentPage + 1}/${totalPages}`)
+                        .setStyle(ButtonStyle.Secondary)
+                        .setDisabled(true);
 
-                        await interaction.update({
-                            components: [newRow1, newPaginationRow, row2]
-                        });
-                    }
+                    const newPaginationRow = new ActionRowBuilder().addComponents(newPrevButton, newPageButton, newNextButton);
+                    const newRow1 = new ActionRowBuilder().addComponents(newRoleSelect);
+
+                    const updatedEmbed = renderPanelEmbed(currentPage);
+
+                    await interaction.update({ embeds: [updatedEmbed], components: [newRow1, newPaginationRow, row2] });
                     return;
                 }
 
-                if (interaction.customId === 'rank_prev_page') {
-                    if (currentPage > 0) {
-                        currentPage--;
-                        const newRoleOptions = getRoleOptionsForPage(currentPage);
-                        const newRoleSelect = new StringSelectMenuBuilder()
-                            .setCustomId('rank_role_select')
-                            .setPlaceholder(`Sélectionnez un rôle à attribuer (Page ${currentPage + 1}/${totalPages})`)
-                            .addOptions(newRoleOptions);
-
-                        const newPrevButton = new ButtonBuilder()
-                            .setCustomId('rank_prev_page')
-                            .setLabel('◀ Précédent')
-                            .setStyle(ButtonStyle.Primary)
-                            .setDisabled(currentPage === 0);
-
-                        const newNextButton = new ButtonBuilder()
-                            .setCustomId('rank_next_page')
-                            .setLabel('Suivant ▶')
-                            .setStyle(ButtonStyle.Primary)
-                            .setDisabled(currentPage === totalPages - 1);
-
-                        const newPageButton = new ButtonBuilder()
-                            .setCustomId('rank_page_info')
-                            .setLabel(`Page ${currentPage + 1}/${totalPages}`)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setDisabled(true);
-
-                        const newPaginationRow = new ActionRowBuilder().addComponents(newPrevButton, newPageButton, newNextButton);
-                        const newRow1 = new ActionRowBuilder().addComponents(newRoleSelect);
-
-                        await interaction.update({
-                            components: [newRow1, newPaginationRow, row2]
-                        });
-                    }
-                    return;
-                }
-
+                // Afficher page info
                 if (interaction.customId === 'rank_page_info') {
                     return interaction.reply({ content: `Vous êtes à la page ${currentPage + 1} sur ${totalPages}`, ephemeral: true });
                 }
 
+                // Annuler
                 if (interaction.customId === 'rank_cancel') {
                     collector.stop();
                     buttonCollector.stop();
@@ -238,6 +211,7 @@ module.exports = {
                     return;
                 }
 
+                // Voir la liste (ephemeral)
                 if (interaction.customId === 'rank_list') {
                     const listEmbed = new EmbedBuilder()
                         .setColor(color)
@@ -254,6 +228,47 @@ module.exports = {
                     return;
                 }
 
+                // Recherche de rôle (permet de taper un nom / id et d'afficher les correspondances)
+                if (interaction.customId === 'rank_search') {
+                    await interaction.deferUpdate();
+                    const prompt = await message.channel.send({ embeds: [embeds.info('🔎 Envoyez le nom (ou une partie) du rôle à rechercher, ou l\'ID du rôle.')], allowedMentions: { repliedUser: false } });
+
+                    const msgFilter = m => m.author.id === message.author.id;
+                    const queryCollector = message.channel.createMessageCollector({ filter: msgFilter, time: 60000, max: 1 });
+
+                    queryCollector.on('collect', async (m) => {
+                        const q = m.content.trim();
+                        if (!q) return message.channel.send({ embeds: [embeds.error('Recherche vide.')], allowedMentions: { repliedUser: false } });
+
+                        // Recherche (nom partiel ou ID)
+                        const matches = availableRoles.filter(r => r.name.toLowerCase().includes(q.toLowerCase()) || r.id === q);
+
+                        if (matches.length === 0) {
+                            return message.channel.send({ embeds: [embeds.warn('Aucun rôle trouvé pour cette recherche.')], allowedMentions: { repliedUser: false } });
+                        }
+
+                        const options = matches.slice(0, 25).map(r => ({ label: r.name.substring(0, 100), value: r.id, description: `Position: ${r.position}` }));
+
+                        const searchSelect = new StringSelectMenuBuilder()
+                            .setCustomId('rank_role_select')
+                            .setPlaceholder(`Résultats: ${matches.length} rôle(s) — sélectionner`)
+                            .addOptions(options);
+
+                        const searchRow = new ActionRowBuilder().addComponents(searchSelect);
+
+                        const updatedEmbed = renderPanelEmbed(currentPage);
+                        await panelMessage.edit({ embeds: [updatedEmbed], components: [searchRow, row3, row2] });
+                        await message.channel.send({ embeds: [embeds.success(`✅ ${Math.min(matches.length, 25)} résultat(s) affichés.`)], allowedMentions: { repliedUser: false } });
+                    });
+
+                    queryCollector.on('end', collected => {
+                        if (collected.size === 0) message.channel.send({ embeds: [embeds.warn('⏱️ Temps écoulé pour la recherche.')], allowedMentions: { repliedUser: false } });
+                    });
+
+                    return;
+                }
+
+                // Les actions add/remove nécessitent une sélection au préalable
                 if (!selectedRole) {
                     return interaction.reply({ content: '❌ Veuillez d\'abord sélectionner un rôle dans le menu déroulant!', ephemeral: true });
                 }
