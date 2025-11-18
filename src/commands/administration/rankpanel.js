@@ -278,7 +278,15 @@ module.exports = {
                         const searchSelect = createRoleSelectMenu(matches, 'rank_role_select', `Résultats: ${matches.length} rôle(s)`);
                         const searchRow = new ActionRowBuilder().addComponents(searchSelect);
 
-                        const updatedEmbed = renderPanelEmbed(currentPage)\n                            .setColor('#0099FF')\n                            .setTitle(`🔎 Résultats: ${matches.length} rôle(s)`);\n                        if (matches.length > 25) {\n                            updatedEmbed.setDescription(`Affichage des 25 premiers résultats. Affinez votre recherche pour plus de précision.`);\n                        }\n\n                        await panelMessage.edit({ embeds: [updatedEmbed], components: [searchRow, row3, row2] });\n                        await message.channel.send({ embeds: [embeds.success(`✅ ${displayCount} résultat(s) affichés${matches.length > 25 ? ` sur ${matches.length}` : ''}.`)], allowedMentions: { repliedUser: false } });
+                        const updatedEmbed = renderPanelEmbed(currentPage)
+                            .setColor('#0099FF')
+                            .setTitle(`🔎 Résultats: ${matches.length} rôle(s)`);
+                        if (matches.length > 25) {
+                            updatedEmbed.setDescription(`Affichage des 25 premiers résultats. Affinez votre recherche pour plus de précision.`);
+                        }
+
+                        await panelMessage.edit({ embeds: [updatedEmbed], components: [searchRow, row3, row2] });
+                        await message.channel.send({ embeds: [embeds.success(`✅ ${displayCount} résultat(s) affichés${matches.length > 25 ? ` sur ${matches.length}` : ''}.`)], allowedMentions: { repliedUser: false } });
                     });
 
                     queryCollector.on('end', collected => {
