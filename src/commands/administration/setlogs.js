@@ -1,9 +1,20 @@
-const { PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, ChannelType } = require('discord.js');
+const { PermissionFlagsBits, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, ChannelType } = require('discord.js');
 const embeds = require('../../utils/embeds');
+
+const LOG_TYPES = {
+    moderation: { label: '🛡️ Moderation', emoji: '🛡️', description: 'Ban / Kick / Mute / Warn' },
+    member: { label: '👥 Member', emoji: '👥', description: 'Join / Leave' },
+    message: { label: '💬 Message', emoji: '💬', description: 'Delete / Edit' },
+    voice: { label: '🎤 Voice', emoji: '🎤', description: 'Join / Leave canal' },
+    guild: { label: '⚙️ Guild', emoji: '⚙️', description: 'Config serveur' },
+    security: { label: '🔒 Security', emoji: '🔒', description: 'Alerts sécurité' },
+    roles: { label: '🎭 Roles', emoji: '🎭', description: 'Assignation rôles' },
+    channels: { label: '#️⃣ Channels', emoji: '#️⃣', description: 'Create / Delete / Edit' }
+};
 
 module.exports = {
     name: 'setlogs',
-    description: 'Configurer les canaux de logs (panel interactif)',
+    description: 'Configurer les canaux de logs (panel unique)',
     category: 'administration',
     permissions: [PermissionFlagsBits.ManageGuild],
     cooldown: 5,
@@ -11,89 +22,163 @@ module.exports = {
     async execute(message, args, client) {
         try {
             if (!message.member.permissions.has(this.permissions || [])) {
-                return message.reply({ embeds: [embeds.error('Vous devez avoir la permission Gérer le serveur pour utiliser cette commande.')] });
+                return message.reply({ embeds: [embeds.error('Permission insuffisante: Gérer le serveur')] });
             }
 
-            const LOG_TYPES = [
-                { label: 'Moderation', value: 'moderation', description: 'Ban / Kick / Mute / Warn' },
-                { label: 'Member', value: 'member', description: 'Join / Leave' },
-                { label: 'Message', value: 'message', description: 'Message delete / edit' },
-                { label: 'Voice', value: 'voice', description: 'Voice join / leave' },
-                { label: 'Guild', value: 'guild', description: 'Config serveur' },
-                { label: 'Security', value: 'security', description: 'Alerts sécurité' },
-                { label: 'Roles', value: 'roles', description: 'Assignation / retrait rôles' },
-                { label: 'Channels', value: 'channels', description: 'Create / Delete / Edit channels' }
-            ];
+            const currentConfig = client.logs.getLogChannels();
 
+            // Créer l'embed de configuration
+            const configEmbed = embeds.info('📋 **Configuration des Canaux de Logs**\n\nSélectionnez un type de log pour le modifier:');
+            configEmbed.setColor('#0099FF');
+
+            // Ajouter tous les types de logs avec leur canal actuel
+            Object.entries(LOG_TYPES).forEach(([key, data]) => {
+                const channelId = currentConfig[key];
+                const value = channelId ? `<#${channelId}>` : '`Non configuré`';
+                configEmbed.addFields({
+                    name: `${data.emoji} ${data.label}`,
+                    value: value,
+                    inline: true
+                });
+            });
+
+            // Menu de sélection pour choisir quel type modifier
             const select = new StringSelectMenuBuilder()
-                .setCustomId('setlogs_select')
-                .setPlaceholder('Choisissez le type de log à configurer')
-                .addOptions(LOG_TYPES.map(t => ({ label: t.label, value: t.value, description: t.description })));
+                .setCustomId('setlogs_type_select')
+                .setPlaceholder('Choisir un type de log...')
+                .addOptions(
+                    Object.entries(LOG_TYPES).map(([key, data]) => ({
+                        label: data.label.replace(/[🛡️👥💬🎤⚙️🔒🎭#️⃣]/g, '').trim(),
+                        value: key,
+                        description: data.description,
+                        emoji: data.emoji
+                    }))
+                );
 
             const row = new ActionRowBuilder().addComponents(select);
 
-            const help = embeds.info('Sélectionnez le type de log que vous souhaitez configurer. Après sélection, envoyez en réponse la mention du salon ou l\'ID du salon. Tapez `none` pour effacer.');
-
-            const sent = await message.reply({ embeds: [help], components: [row], allowedMentions: { repliedUser: false } });
+            const panelMsg = await message.reply({ 
+                embeds: [configEmbed], 
+                components: [row], 
+                allowedMentions: { repliedUser: false } 
+            });
 
             const filter = i => i.user.id === message.author.id;
-
-            const collector = sent.createMessageComponentCollector({ filter, time: 120000, max: 1 });
+            const collector = panelMsg.createMessageComponentCollector({ filter, time: 300000 }); // 5 min
 
             collector.on('collect', async (interaction) => {
                 try {
+                    const selectedType = interaction.values[0];
                     await interaction.deferUpdate();
-                    const selected = interaction.values[0];
 
-                    const prompt = await message.channel.send({ embeds: [embeds.info(`Vous avez choisi **${selected}**. Merci de mentionner le salon (ex: #logs) ou envoyer l'ID du salon. Tapez \\`none\\` pour supprimer cette configuration.`)], allowedMentions: { repliedUser: false } });
+                    // Afficher un prompt pour configurer ce type
+                    const typeData = LOG_TYPES[selectedType];
+                    const infoMsg = await message.channel.send({
+                        embeds: [embeds.info(
+                            `**${typeData.label}** - ${typeData.description}\n\n` +
+                            `Envoyez:\n` +
+                            `• La mention du salon (\`#logs\`)\n` +
+                            `• L'ID du salon\n` +
+                            `• \`none\` ou \`clear\` pour supprimer\n` +
+                            `• \`cancel\` pour annuler`
+                        )],
+                        allowedMentions: { repliedUser: false }
+                    });
 
                     const msgFilter = m => m.author.id === message.author.id;
-                    const msgCollector = message.channel.createMessageCollector({ filter: msgFilter, time: 120000, max: 1 });
+                    const msgCollector = message.channel.createMessageCollector({ filter: msgFilter, time: 60000, max: 1 });
 
                     msgCollector.on('collect', async (m) => {
-                        const content = m.content.trim();
-                        if (content.toLowerCase() === 'none') {
-                            client.logs.setLogChannels({ [selected]: '' });
-                            await message.channel.send({ embeds: [embeds.success(`Configuration supprimée pour **${selected}**.`)], allowedMentions: { repliedUser: false } });
-                            return;
-                        }
-
-                        // Extract channel id from mention or id
-                        const mentionMatch = content.match(/<#(\d+)>/);
-                        const idMatch = content.match(/^(\d+)$/);
-                        const channelId = mentionMatch ? mentionMatch[1] : (idMatch ? idMatch[1] : null);
-
-                        if (!channelId) {
-                            return message.channel.send({ embeds: [embeds.error('Salon invalide. Veuillez mentionner un salon ou fournir son ID.')], allowedMentions: { repliedUser: false } });
-                        }
-
                         try {
-                            const channel = await message.guild.channels.fetch(channelId);
-                            if (!channel || channel.type !== ChannelType.GuildText) {
-                                return message.channel.send({ embeds: [embeds.error('Le salon doit être un salon texte.')], allowedMentions: { repliedUser: false } });
+                            const content = m.content.trim().toLowerCase();
+
+                            // Annuler
+                            if (content === 'cancel') {
+                                await message.channel.send({ embeds: [embeds.warn('❌ Annulé')] });
+                                return;
                             }
 
-                            client.logs.setLogChannels({ [selected]: channelId });
-                            await message.channel.send({ embeds: [embeds.success(`Canal configuré pour **${selected}**: <#${channelId}>`)], allowedMentions: { repliedUser: false } });
+                            // Effacer
+                            if (content === 'none' || content === 'clear') {
+                                client.logs.setLogChannels({ [selectedType]: '' });
+                                await message.channel.send({ 
+                                    embeds: [embeds.success(`${typeData.emoji} **${selectedType}** - Configuration supprimée`)] 
+                                });
+                                return;
+                            }
+
+                            // Extraire ID du salon
+                            const mentionMatch = m.content.match(/<#(\d+)>/);
+                            const idMatch = m.content.match(/^(\d+)$/);
+                            const channelId = mentionMatch ? mentionMatch[1] : (idMatch ? idMatch[1] : null);
+
+                            if (!channelId) {
+                                return message.channel.send({ 
+                                    embeds: [embeds.error('Salon invalide. Mentionnez un salon ou fournissez l\'ID.')] 
+                                });
+                            }
+
+                            try {
+                                const channel = await message.guild.channels.fetch(channelId);
+                                if (!channel || channel.type !== ChannelType.GuildText) {
+                                    return message.channel.send({ 
+                                        embeds: [embeds.error('Le salon doit être un salon texte.')] 
+                                    });
+                                }
+
+                                // Vérifier que le bot peut écrire dans ce salon
+                                if (!channel.permissionsFor(message.guild.members.me).has(['SendMessages', 'EmbedLinks'])) {
+                                    return message.channel.send({ 
+                                        embeds: [embeds.error('Je n\'ai pas les permissions pour écrire dans ce salon.')] 
+                                    });
+                                }
+
+                                client.logs.setLogChannels({ [selectedType]: channelId });
+                                await message.channel.send({ 
+                                    embeds: [embeds.success(`${typeData.emoji} **${selectedType}** configuré: <#${channelId}>`)] 
+                                });
+
+                                // Mettre à jour le panel
+                                const updatedConfig = client.logs.getLogChannels();
+                                const updatedEmbed = embeds.info('📋 **Configuration des Canaux de Logs**\n\nSélectionnez un type de log pour le modifier:');
+                                updatedEmbed.setColor('#00FF00');
+
+                                Object.entries(LOG_TYPES).forEach(([key, data]) => {
+                                    const cId = updatedConfig[key];
+                                    const val = cId ? `<#${cId}>` : '`Non configuré`';
+                                    updatedEmbed.addFields({
+                                        name: `${data.emoji} ${data.label}`,
+                                        value: val,
+                                        inline: true
+                                    });
+                                });
+
+                                await panelMsg.edit({ embeds: [updatedEmbed] });
+
+                            } catch (e) {
+                                return message.channel.send({ 
+                                    embeds: [embeds.error('Impossible de récupérer le salon. Vérifiez l\'ID.')] 
+                                });
+                            }
                         } catch (e) {
-                            return message.channel.send({ embeds: [embeds.error('Impossible de récupérer le salon. Vérifiez l\'ID.')], allowedMentions: { repliedUser: false } });
+                            console.error('Error processing channel input:', e);
                         }
                     });
 
                     msgCollector.on('end', collected => {
                         if (collected.size === 0) {
-                            message.channel.send({ embeds: [embeds.warn('Temps écoulé. Recommencez la commande.')], allowedMentions: { repliedUser: false } });
+                            message.channel.send({ embeds: [embeds.warn('⏱️ Temps écoulé')] });
                         }
                     });
 
                 } catch (e) {
-                    console.error(e);
+                    console.error('Error in interaction:', e);
                 }
             });
 
-            collector.on('end', collected => {
+            collector.on('end', () => {
                 try {
-                    sent.edit({ components: [] }).catch(() => {});
+                    panelMsg.edit({ components: [] }).catch(() => {});
                 } catch (e) {}
             });
 
