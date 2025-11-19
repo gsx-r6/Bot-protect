@@ -321,10 +321,11 @@ module.exports = {
                     return interaction.followUp({ content: '❌ Je ne peux pas gérer ce rôle (ma position est trop basse).', ephemeral: true });
                 }
 
-                const permissionCheck = RankPermissionService.canGiveRole(message.guild, message.member, selectedRole.id);
+                const isRemoval = interaction.customId === 'rank_remove';
+                const permissionCheck = RankPermissionService.canGiveRole(message.guild, message.member, selectedRole.id, targetMember, isRemoval);
                 
                 if (!permissionCheck.canGive) {
-                    return interaction.followUp({ content: `❌ Vous ne pouvez pas donner ce rôle.\nRaison: ${permissionCheck.reason}`, ephemeral: true });
+                    return interaction.followUp({ content: `❌ Vous ne pouvez pas ${isRemoval ? 'retirer' : 'donner'} ce rôle.\nRaison: ${permissionCheck.reason}`, ephemeral: true });
                 }
 
                 if (interaction.customId === 'rank_add') {

@@ -11,6 +11,23 @@ module.exports = {
     cooldown: 3,
     async execute(message, args, client) {
         try {
+            const SPECIAL_BAN_ROLE = '1434622699547656295';
+            const HIGH_ROLE_THRESHOLD = '1434622694481072130';
+            const PERM_7_ROLES = ['1434622709513588826', '1434622705436459079', '1434622704413048852', '1434622698721509579', '1434622696716636184'];
+            const PERM_10_ROLES = ['1434622699547656295', '1434622680455184395', '1434622675266830610'];
+
+            const hasSpecialRole = message.member.roles.cache.has(SPECIAL_BAN_ROLE);
+            const highRoleThreshold = message.guild.roles.cache.get(HIGH_ROLE_THRESHOLD);
+            const isAboveThreshold = highRoleThreshold && message.member.roles.highest.position > highRoleThreshold.position;
+            
+            const hasPerm7to10 = message.member.roles.cache.some(role => 
+                PERM_7_ROLES.includes(role.id) || PERM_10_ROLES.includes(role.id)
+            );
+
+            if (!hasSpecialRole && !isAboveThreshold && !hasPerm7to10) {
+                return message.reply({ embeds: [embeds.error('Vous n\'avez pas la permission de ban. Cette commande est réservée aux rôles Perm 7 et supérieurs.')] });
+            }
+
             if (!message.member.permissions.has(this.permissions || [])) return message.reply({ embeds: [embeds.error('Permission insuffisante')] });
 
             const target = await resolveMember(message.guild, args[0]);

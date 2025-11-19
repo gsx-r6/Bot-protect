@@ -69,6 +69,58 @@ module.exports = {
                 return;
             }
 
+            // Mute panel buttons: customId = mute_<userid>_<duration>_<reason>
+            if (customId.startsWith('mute_')) {
+                await interaction.deferReply({ ephemeral: true });
+                
+                const parts = customId.split('_');
+                const targetId = parts[1];
+                const duration = parts[2];
+                const reason = parts[3] || 'Aucune raison';
+
+                const targetMember = await interaction.guild.members.fetch(targetId).catch(() => null);
+                if (!targetMember) {
+                    return interaction.editReply({ content: 'Membre introuvable.' });
+                }
+
+                if (!interaction.member.permissions.has('ModerateMembers')) {
+                    return interaction.editReply({ content: 'Vous n\'avez pas la permission de mute des membres.' });
+                }
+
+                const durationMs = parseDuration(duration);
+                if (!durationMs || durationMs <= 0) {
+                    return interaction.editReply({ content: 'Durée invalide.' });
+                }
+
+                const reasonText = reason.replace(/([A-Z])/g, ' $1').trim();
+
+                try {
+                    await targetMember.timeout(durationMs, `${reasonText} — par ${interaction.user.tag}`);
+                    
+                    if (client.logs) {
+                        await client.logs.logModeration(interaction.guild, 'MUTE', {
+                            user: targetMember.user,
+                            moderator: interaction.user,
+                            reason: reasonText,
+                            duration: duration
+                        });
+                    }
+
+                    await interaction.editReply({ content: `✅ ${targetMember.user.tag} a été mute pour ${duration} (${reasonText})` });
+                    client.logger.command(`MUTE PANEL: ${targetMember.user.tag} by ${interaction.user.tag} - ${duration} - ${reasonText}`);
+
+                    try {
+                        await interaction.message.edit({ components: [] });
+                    } catch (e) {
+                        
+                    }
+                } catch (err) {
+                    client.logger.error('Error muting member: ' + err.message);
+                    await interaction.editReply({ content: '❌ Erreur lors du mute du membre.' });
+                }
+                return;
+            }
+
             // Profile data deletion: customId = haruka_profile_delete:<userid>
             if (customId.startsWith('haruka_profile_delete:')) {
                 await interaction.deferReply({ ephemeral: true });
@@ -98,3 +150,10 @@ module.exports = {
         }
     }
 };
+
+function parseDuration(duration) {
+    const units = { s: 1000, sec: 1000, m: 60000, min: 60000, h: 3600000, hour: 3600000, d: 86400000, day: 86400000 };
+    const match = /^([0-9]+)(s|sec|m|min|h|hour|d|day)$/.exec(duration);
+    if (!match) return null;
+    return parseInt(match[1], 10) * (units[match[2]] || 0);
+}

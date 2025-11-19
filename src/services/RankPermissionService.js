@@ -6,9 +6,27 @@ class RankPermissionService {
         this.cache = new Map();
     }
 
-    canGiveRole(guild, executorMember, targetRoleId) {
+    canGiveRole(guild, executorMember, targetRoleId, targetMember = null, isRemoval = false) {
         if (!guild || !executorMember || !targetRoleId) {
             return { canGive: false, reason: 'Paramètres invalides' };
+        }
+
+        const targetRole = guild.roles.cache.get(targetRoleId);
+        if (!targetRole) {
+            return { canGive: false, reason: 'Rôle cible introuvable' };
+        }
+
+        if (targetMember && !isRemoval) {
+            try {
+                const isBlacklisted = db.db.prepare('SELECT * FROM role_blacklist WHERE guild_id = ? AND user_id = ?')
+                    .get(guild.id, targetMember.id);
+
+                if (isBlacklisted) {
+                    return { canGive: false, reason: 'Ce membre est sous protection blr (blacklist role). Utilisez +unblr pour débloquer.' };
+                }
+            } catch (err) {
+                logger.error('Error checking blacklist: ' + err.message);
+            }
         }
 
         if (executorMember.id === guild.ownerId) {
@@ -19,13 +37,19 @@ class RankPermissionService {
             return { canGive: true };
         }
 
+        const SPECIAL_ADMIN_ROLE = '1434622699547656295';
+        const MAX_RANK_FOR_SPECIAL = '1434622692429926560';
+        
+        if (executorMember.roles.cache.has(SPECIAL_ADMIN_ROLE)) {
+            const maxRankRole = guild.roles.cache.get(MAX_RANK_FOR_SPECIAL);
+            if (maxRankRole && targetRole.position > maxRankRole.position) {
+                return { canGive: false, reason: `Avec le rôle <@&${SPECIAL_ADMIN_ROLE}>, vous pouvez rank jusqu'à <@&${MAX_RANK_FOR_SPECIAL}>` };
+            }
+            return { canGive: true };
+        }
+
         const guildId = guild.id;
         const executorRoles = executorMember.roles.cache.sort((a, b) => b.position - a.position);
-        
-        const targetRole = guild.roles.cache.get(targetRoleId);
-        if (!targetRole) {
-            return { canGive: false, reason: 'Rôle cible introuvable' };
-        }
 
         const restrictedRoleIds = [
             '1434622725388763271', '1434622727209226404', '1434622734003867689',

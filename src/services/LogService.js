@@ -317,7 +317,15 @@ class LogService {
         }
 
         try {
-            const channel = await guild.channels.fetch(channelId);
+            let channel = guild.channels.cache.get(channelId);
+            if (!channel) {
+                try {
+                    channel = await guild.channels.fetch(channelId);
+                } catch (fetchErr) {
+                    console.error(`❌ Impossible de récupérer le canal ${channelId}:`, fetchErr.message);
+                }
+            }
+            
             if (!channel || channel.type !== ChannelType.GuildText) {
                 console.error(`❌ Canal de log invalide: ${channelId} — fallback fichier`);
                 await this.writeLocalLog(embed);

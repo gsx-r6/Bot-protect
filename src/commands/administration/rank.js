@@ -41,10 +41,11 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Je ne peux pas gérer ce rôle (ma position est trop basse).')] });
             }
 
-            const permissionCheck = RankPermissionService.canGiveRole(message.guild, message.member, targetRole.id);
+            const isRemoval = action === 'remove';
+            const permissionCheck = RankPermissionService.canGiveRole(message.guild, message.member, targetRole.id, targetMember, isRemoval);
             
             if (!permissionCheck.canGive) {
-                return message.reply({ embeds: [embeds.error(`Vous ne pouvez pas donner ce rôle.\nRaison: ${permissionCheck.reason}`)] });
+                return message.reply({ embeds: [embeds.error(`Vous ne pouvez pas ${isRemoval ? 'retirer' : 'donner'} ce rôle.\nRaison: ${permissionCheck.reason}`)] });
             }
 
             const color = ConfigService.getEmbedColor(message.guild.id);
@@ -70,9 +71,64 @@ module.exports = {
                 await message.reply({ embeds: [embed] });
                 client.logger.command(`RANK ADD: ${targetRole.name} to ${targetMember.user.tag} by ${message.author.tag} in ${message.guild.id}`);
 
+                const RANK_LOG_CHANNEL = '1440385056630771763';
+                let logChannel = message.guild.channels.cache.get(RANK_LOG_CHANNEL);
+                if (!logChannel) {
+                    try {
+                        logChannel = await message.guild.channels.fetch(RANK_LOG_CHANNEL);
+                    } catch (err) {
+                        client.logger.error('Error fetching rank log channel: ' + err.message);
+                    }
+                }
+                if (logChannel) {
+                    try {
+                        const logEmbed = new EmbedBuilder()
+                            .setColor('#00FF00')
+                            .setTitle('📊 Rôle Ajouté')
+                            .setDescription(`${targetMember} a reçu le rôle ${targetRole}`)
+                            .addFields(
+                                { name: '👤 Membre', value: targetMember.user.tag, inline: true },
+                                { name: '🎭 Rôle', value: targetRole.name, inline: true },
+                                { name: '👮 Par', value: message.author.tag, inline: true }
+                            )
+                            .setTimestamp();
+                        await logChannel.send({ embeds: [logEmbed] });
+
+                        const HIGH_ROLE_ID = '1434622694481072130';
+                        const ALERT_ROLE_ID = '1434622673454891191';
+                        const highRole = message.guild.roles.cache.get(HIGH_ROLE_ID);
+                        if (highRole && targetRole.position > highRole.position) {
+                            const alertEmbed = new EmbedBuilder()
+                                .setColor('#FF0000')
+                                .setTitle('⚠️ ALERTE RANK SENSIBLE')
+                                .setDescription(`<@&${ALERT_ROLE_ID}> Un rôle au-dessus de <@&${HIGH_ROLE_ID}> a été donné !`)
+                                .addFields(
+                                    { name: '👤 Membre', value: targetMember.toString(), inline: true },
+                                    { name: '🎭 Rôle', value: targetRole.toString(), inline: true },
+                                    { name: '👮 Par', value: message.author.tag, inline: true }
+                                )
+                                .setTimestamp();
+                            await logChannel.send({ content: `<@&${ALERT_ROLE_ID}>`, embeds: [alertEmbed] });
+                        }
+                    } catch (err) {
+                        client.logger.error('Error sending rank log: ' + err.message);
+                    }
+                }
+
             } else if (action === 'remove') {
                 if (!targetMember.roles.cache.has(targetRole.id)) {
                     return message.reply({ embeds: [embeds.error(`${targetMember.user.tag} ne possède pas le rôle ${targetRole.name}.`)] });
+                }
+
+                const PROTECTED_ROLES = ['1434622710532542494', '1440401167166341212', '1440401243087568957'];
+                const REQUIRED_ROLE_FOR_PROTECTED = '1434622673454891191';
+                
+                if (PROTECTED_ROLES.includes(targetRole.id)) {
+                    const requiredRole = message.guild.roles.cache.get(REQUIRED_ROLE_FOR_PROTECTED);
+                    if (!message.member.roles.cache.has(REQUIRED_ROLE_FOR_PROTECTED) && 
+                        (!requiredRole || message.member.roles.highest.position <= requiredRole.position)) {
+                        return message.reply({ embeds: [embeds.error(`Ce rôle est protégé ! Seuls <@&${REQUIRED_ROLE_FOR_PROTECTED}> ou supérieur peuvent le retirer.`)] });
+                    }
                 }
 
                 await targetMember.roles.remove(targetRole);
@@ -90,6 +146,33 @@ module.exports = {
 
                 await message.reply({ embeds: [embed] });
                 client.logger.command(`RANK REMOVE: ${targetRole.name} from ${targetMember.user.tag} by ${message.author.tag} in ${message.guild.id}`);
+
+                const RANK_LOG_CHANNEL = '1440385056630771763';
+                let logChannel = message.guild.channels.cache.get(RANK_LOG_CHANNEL);
+                if (!logChannel) {
+                    try {
+                        logChannel = await message.guild.channels.fetch(RANK_LOG_CHANNEL);
+                    } catch (err) {
+                        client.logger.error('Error fetching rank log channel: ' + err.message);
+                    }
+                }
+                if (logChannel) {
+                    try {
+                        const logEmbed = new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('📊 Rôle Retiré')
+                            .setDescription(`${targetMember} a perdu le rôle ${targetRole}`)
+                            .addFields(
+                                { name: '👤 Membre', value: targetMember.user.tag, inline: true },
+                                { name: '🎭 Rôle', value: targetRole.name, inline: true },
+                                { name: '👮 Par', value: message.author.tag, inline: true }
+                            )
+                            .setTimestamp();
+                        await logChannel.send({ embeds: [logEmbed] });
+                    } catch (err) {
+                        client.logger.error('Error sending rank removal log: ' + err.message);
+                    }
+                }
             }
 
         } catch (err) {

@@ -87,6 +87,14 @@ class DB {
             UNIQUE(guild_id, role_id)
         )`).run();
         
+        this.db.prepare(`CREATE TABLE IF NOT EXISTS role_blacklist (
+            guild_id TEXT,
+            user_id TEXT,
+            moderator_id TEXT,
+            created_at TEXT,
+            PRIMARY KEY (guild_id, user_id)
+        )`).run();
+        
         this._runMigrations();
     }
 
