@@ -49,11 +49,11 @@ async function updateOnce(client, guild = null) {
             let newName = '';
             
             if (id === membersChanId) {
-                newName = `👥 ・Membres : ${totalMembers || 0}`;
+                newName = `🍢 ・Membres : ${totalMembers || 0}`;
             } else if (id === onlineChanId) {
-                newName = `🌐 ・En ligne : ${onlineCount || 0}`;
+                newName = `🍜 ・En ligne : ${onlineCount || 0}`;
             } else if (id === voiceChanId) {
-                newName = `🔊 ・En vocal : ${voiceCount || 0}`;
+                newName = `🥢 ・En vocal : ${voiceCount || 0}`;
             }
 
             if (newName && channel.name !== newName) {
