@@ -14,7 +14,7 @@ module.exports = {
         
         // Initialiser le service de logging
         client.logs = new LogService(client);
-        logger.success('📝 Service de logging initialisé');
+        logger.success('📝 Service de logging initialisé (lazy loading)');
         
         // Afficher les canaux de log configurés
         const logChannels = client.logs.getLogChannels();

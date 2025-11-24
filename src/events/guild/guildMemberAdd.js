@@ -9,12 +9,12 @@ module.exports = {
         try {
             logger.info(`➕ Nouveau membre: ${member.user.tag} dans ${member.guild.name}`);
             
-            // 📝 Envoyer au canal de logs "member"
+            // 📝 Envoyer au canal de logs "member" de manière non-bloquante
             if (client.logs) {
-                await client.logs.logMember(member.guild, 'JOIN', {
+                client.logs.logMember(member.guild, 'JOIN', {
                     user: member.user,
                     memberCount: member.guild.memberCount
-                });
+                }).catch(e => logger.error('[GuildMemberAdd] Error sending log:', e));
             }
             
             // Mettre à jour les stats

@@ -25,6 +25,32 @@ class LogService {
             roles: process.env.LOG_CHANNEL_ROLES || '',
             channels: process.env.LOG_CHANNEL_CHANNELS || ''
         };
+        this.channelsCache = new Map();
+        this.isInitialized = false;
+    }
+
+    async getChannelFromCache(guild, channelId) {
+        const cacheKey = `${guild.id}_${channelId}`;
+        
+        if (this.channelsCache.has(cacheKey)) {
+            return this.channelsCache.get(cacheKey);
+        }
+        
+        let channel = guild.channels.cache.get(channelId);
+        
+        if (!channel) {
+            try {
+                channel = await guild.channels.fetch(channelId);
+            } catch (error) {
+                return null;
+            }
+        }
+        
+        if (channel) {
+            this.channelsCache.set(cacheKey, channel);
+        }
+        
+        return channel;
     }
 
     /**
@@ -310,21 +336,13 @@ class LogService {
      * Envoyer l'embed au canal spécifié
      */
     async sendToChannel(guild, channelId, embed) {
-        // Si aucun channel configuré, fallback vers fichier local
         if (!channelId) {
             await this.writeLocalLog(embed);
             return true;
         }
 
         try {
-            let channel = guild.channels.cache.get(channelId);
-            if (!channel) {
-                try {
-                    channel = await guild.channels.fetch(channelId);
-                } catch (fetchErr) {
-                    console.error(`❌ Impossible de récupérer le canal ${channelId}:`, fetchErr.message);
-                }
-            }
+            const channel = await this.getChannelFromCache(guild, channelId);
             
             if (!channel || channel.type !== ChannelType.GuildText) {
                 console.error(`❌ Canal de log invalide: ${channelId} — fallback fichier`);
