@@ -1,0 +1,30 @@
+{
+  "name": "uhq-monde",
+  "version": "1.0.0",
+  "description": "{+} uhq Monde - Bot Discord de modération ultra-sécurisé",
+  "main": "src/core/index.js",
+  "scripts": {
+    "start": "node src/core/index.js",
+    "dev": "nodemon src/core/index.js",
+    "test": "jest --coverage",
+    "lint": "eslint src/**/*.js",
+    "security-audit": "node src/security/securityAudit.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "sqlite3": "^5.1.6",
+    "better-sqlite3": "^8.4.0",
+    "winston": "^3.9.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "eslint": "^8.55.0",
+    "jest": "^29.7.0"
+  },
+  "license": "MIT"
+}

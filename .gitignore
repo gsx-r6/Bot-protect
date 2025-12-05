@@ -1,0 +1,109 @@
+# ==========================================
+# NAMI-PROTECT BOT - .gitignore
+# ==========================================
+
+# ===== DÉPENDANCES =====
+node_modules/
+package-lock.json
+yarn.lock
+
+# ===== ENVIRONNEMENT =====
+.env
+.env.local
+.env.*.local
+
+# ===== DONNÉES DYNAMIQUES (runtime) =====
+# Logs - NE JAMAIS COMMITER
+data/logs/*.log
+data/logs/debug.log
+data/logs/combined.log
+data/logs/error.log
+
+# Base de données - NE JAMAIS COMMITER
+data/database/*.db
+data/database/*.sqlite
+data/database/*.sqlite3
+data/database/*-shm
+data/database/*-wal
+
+# Cache - NE JAMAIS COMMITER
+data/cache/*
+
+# Sauvegardes - NE JAMAIS COMMITER
+data/backups/*
+
+# Mais GARDER les dossiers vides (pour Git)
+!data/logs/.gitkeep
+!data/database/.gitkeep
+!data/cache/.gitkeep
+!data/backups/.gitkeep
+
+# ===== BUILD & COMPILATION =====
+dist/
+build/
+out/
+
+# ===== TESTS & COVERAGE =====
+coverage/
+.nyc_output/
+*.lcov
+.jest-cache/
+
+# ===== LOGS (anciens chemins) =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== ÉDITEURS & IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+.DS_Store
+Thumbs.db
+.project
+.classpath
+.c9/
+*.launch
+
+# ===== OS =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===== REPLIT (si utilisé) =====
+.replit
+replit.nix
+
+# ===== DOCKER (si utilisé) =====
+.dockerignore
+docker-compose.override.yml
+
+# ===== NVM & VERSION MANAGERS =====
+.nvmrc
+.ruby-version
+.python-version
+
+# ===== BACKUPS =====
+*.bak
+*.backup
+*.tmp
+
+# ===== SECRETS =====
+.env
+.env.local
+.env.*.local
+secrets/
+
+# ===== GIT =====
+.git/
+.gitmodules
+.gitattributes
