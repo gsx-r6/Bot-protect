@@ -79,9 +79,6 @@ Thumbs.db
 ehthumbs.db
 Thumbs.db
 
-# ===== REPLIT (si utilisé) =====
-.replit
-replit.nix
 
 # ===== DOCKER (si utilisé) =====
 .dockerignore
