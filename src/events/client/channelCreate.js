@@ -7,9 +7,15 @@ module.exports = {
 
     async execute(channel, client) {
         try {
+            if (!channel.guild) return;
             logger.info(`🆕 Canal créé: ${channel.name} (${channel.id})`);
+            
             if (client.logs) {
-                await client.logs.logChannels(channel.guild, 'CREATE', { channel });
+                client.logs.logChannels(channel.guild, 'CREATE', { channel }).catch(() => {});
+            }
+            
+            if (client.loggerService) {
+                client.loggerService.logChannelCreate(channel);
             }
         } catch (e) {
             logger.error('[ChannelCreate] Error:', e);

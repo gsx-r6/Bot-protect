@@ -9,15 +9,17 @@ module.exports = {
         try {
             logger.info(`➖ Membre parti: ${member.user.tag} de ${member.guild.name}`);
             
-            // 📝 Envoyer au canal de logs "member"
             if (client.logs) {
-                await client.logs.logMember(member.guild, 'LEAVE', {
+                client.logs.logMember(member.guild, 'LEAVE', {
                     user: member.user,
                     memberCount: member.guild.memberCount
-                });
+                }).catch(() => {});
             }
             
-            // Mettre à jour les stats
+            if (client.loggerService) {
+                client.loggerService.logMemberLeave(member);
+            }
+            
             const statsJob = require('../../jobs/statsVoiceUpdater');
             if (statsJob && statsJob.updateOnce) {
                 await statsJob.updateOnce(client, member.guild);

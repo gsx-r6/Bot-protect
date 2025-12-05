@@ -9,15 +9,17 @@ module.exports = {
         try {
             logger.info(`➕ Nouveau membre: ${member.user.tag} dans ${member.guild.name}`);
             
-            // 📝 Envoyer au canal de logs "member" de manière non-bloquante
             if (client.logs) {
                 client.logs.logMember(member.guild, 'JOIN', {
                     user: member.user,
                     memberCount: member.guild.memberCount
-                }).catch(e => logger.error('[GuildMemberAdd] Error sending log:', e));
+                }).catch(() => {});
             }
             
-            // Mettre à jour les stats
+            if (client.loggerService) {
+                client.loggerService.logMemberJoin(member);
+            }
+            
             const statsJob = require('../../jobs/statsVoiceUpdater');
             if (statsJob && statsJob.updateOnce) {
                 await statsJob.updateOnce(client, member.guild);

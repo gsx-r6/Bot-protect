@@ -7,9 +7,15 @@ module.exports = {
 
     async execute(channel, client) {
         try {
+            if (!channel.guild) return;
             logger.info(`🗑️ Canal supprimé: ${channel.name} (${channel.id})`);
+            
             if (client.logs) {
-                await client.logs.logChannels(channel.guild, 'DELETE', { channel });
+                client.logs.logChannels(channel.guild, 'DELETE', { channel }).catch(() => {});
+            }
+            
+            if (client.loggerService) {
+                client.loggerService.logChannelDelete(channel);
             }
         } catch (e) {
             logger.error('[ChannelDelete] Error:', e);

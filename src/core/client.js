@@ -4,10 +4,10 @@ const commandHandler = require('../handlers/commandHandler');
 const eventHandler = require('../handlers/eventHandler');
 const logger = require('../utils/logger');
 const LogService = require('../services/LogService');
+const LoggerService = require('../services/LoggerService');
 
 class HarukaClient extends Client {
     constructor() {
-        // Include presence and voice-state intents so we can report online & voice counts
         super({
             intents: [
                 GatewayIntentBits.Guilds,
@@ -16,14 +16,17 @@ class HarukaClient extends Client {
                 GatewayIntentBits.MessageContent,
                 GatewayIntentBits.GuildMessageReactions,
                 GatewayIntentBits.GuildPresences,
-                GatewayIntentBits.GuildVoiceStates
+                GatewayIntentBits.GuildVoiceStates,
+                GatewayIntentBits.GuildEmojisAndStickers,
+                GatewayIntentBits.GuildModeration
             ]
         });
         this.commands = new Collection();
         this.aliases = new Collection();
         this.cooldowns = new Collection();
         this.logger = logger;
-        this.logs = null; // Sera initialisé au ready
+        this.logs = null;
+        this.loggerService = new LoggerService(this);
 
         // Attach runtime config
         try {

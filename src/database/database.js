@@ -95,6 +95,19 @@ class DB {
             PRIMARY KEY (guild_id, user_id)
         )`).run();
 
+        this.db.prepare(`CREATE TABLE IF NOT EXISTS logger_channels (
+            guild_id TEXT PRIMARY KEY,
+            channel_log TEXT,
+            emoji_log TEXT,
+            ban_log TEXT,
+            join_log TEXT,
+            leave_log TEXT,
+            message_log TEXT,
+            voice_log TEXT,
+            mod_log TEXT,
+            updated_at TEXT
+        )`).run();
+
         this._runMigrations();
     }
 
@@ -226,6 +239,37 @@ class DB {
             this.db.prepare(`INSERT INTO automod_config (guild_id, ${key}, updated_at) VALUES (?, ?, ?)`).run(guildId, value, new Date().toISOString());
         } else {
             this.db.prepare(`UPDATE automod_config SET ${key} = ?, updated_at = ? WHERE guild_id = ?`).run(value, new Date().toISOString(), guildId);
+        }
+    }
+
+    getLoggerChannels(guildId) {
+        const stmt = this.db.prepare('SELECT * FROM logger_channels WHERE guild_id = ?');
+        return stmt.get(guildId);
+    }
+
+    setLoggerChannel(guildId, logType, channelId) {
+        const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log'];
+        if (!validTypes.includes(logType)) {
+            throw new Error(`Invalid log type: ${logType}`);
+        }
+
+        const config = this.getLoggerChannels(guildId);
+        if (!config) {
+            this.db.prepare(`INSERT INTO logger_channels (guild_id, ${logType}, updated_at) VALUES (?, ?, ?)`).run(guildId, channelId, new Date().toISOString());
+        } else {
+            this.db.prepare(`UPDATE logger_channels SET ${logType} = ?, updated_at = ? WHERE guild_id = ?`).run(channelId, new Date().toISOString(), guildId);
+        }
+    }
+
+    removeLoggerChannel(guildId, logType) {
+        const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log'];
+        if (!validTypes.includes(logType)) {
+            throw new Error(`Invalid log type: ${logType}`);
+        }
+
+        const config = this.getLoggerChannels(guildId);
+        if (config) {
+            this.db.prepare(`UPDATE logger_channels SET ${logType} = NULL, updated_at = ? WHERE guild_id = ?`).run(new Date().toISOString(), guildId);
         }
     }
 }
