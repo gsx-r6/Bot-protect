@@ -1,0 +1,22 @@
+{
+  "channels": {
+    "channelLog": "",
+    "emojiLog": "",
+    "banLog": "",
+    "joinLog": "",
+    "leaveLog": "",
+    "messageLog": "",
+    "voiceLog": "",
+    "modLog": ""
+  },
+  "enabled": {
+    "channelLogs": true,
+    "emojiLogs": true,
+    "banLogs": true,
+    "joinLogs": true,
+    "leaveLogs": true,
+    "messageLogs": true,
+    "voiceLogs": true,
+    "modLogs": true
+  }
+}
