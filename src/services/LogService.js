@@ -15,7 +15,7 @@ if (!fs.existsSync(LOGS_DIR)) {
 class LogService {
     constructor(client) {
         this.client = client;
-        this.logChannels = {
+        this.logChannelIds = {
             moderation: process.env.LOG_CHANNEL_MODERATION || '',
             member: process.env.LOG_CHANNEL_MEMBER || '',
             message: process.env.LOG_CHANNEL_MESSAGE || '',
@@ -57,7 +57,7 @@ class LogService {
      * Envoyer un log de modération (ban, kick, mute, warn)
      */
     async logModeration(guild, action, details) {
-        if (!this.logChannels.moderation) return;
+        if (!this.logChannelIds.moderation) return;
 
         const embed = new EmbedBuilder()
             .setColor('#FF0000')
@@ -95,14 +95,14 @@ class LogService {
             });
         }
 
-        return this.sendToChannel(guild, this.logChannels.moderation, embed);
+        return this.sendToChannel(guild, this.logChannelIds.moderation, embed);
     }
 
     /**
      * Envoyer un log membre (join/leave)
      */
     async logMember(guild, action, details) {
-        if (!this.logChannels.member) return;
+        if (!this.logChannelIds.member) return;
 
         const embed = new EmbedBuilder()
             .setColor(action === 'JOIN' ? '#00FF00' : '#FF0000')
@@ -123,14 +123,14 @@ class LogService {
             );
         }
 
-        return this.sendToChannel(guild, this.logChannels.member, embed);
+        return this.sendToChannel(guild, this.logChannelIds.member, embed);
     }
 
     /**
      * Envoyer un log message (delete/edit)
      */
     async logMessage(guild, action, details) {
-        if (!this.logChannels.message) return;
+        if (!this.logChannelIds.message) return;
 
         const embed = new EmbedBuilder()
             .setColor(action === 'DELETE' ? '#FF0000' : '#FFA500')
@@ -160,14 +160,14 @@ class LogService {
             );
         }
 
-        return this.sendToChannel(guild, this.logChannels.message, embed);
+        return this.sendToChannel(guild, this.logChannelIds.message, embed);
     }
 
     /**
      * Envoyer un log voix (join/leave canal)
      */
     async logVoice(guild, action, details) {
-        if (!this.logChannels.voice) return;
+        if (!this.logChannelIds.voice) return;
 
         const embed = new EmbedBuilder()
             .setColor(action === 'JOIN' ? '#00FF00' : '#FF0000')
@@ -186,14 +186,14 @@ class LogService {
             );
         }
 
-        return this.sendToChannel(guild, this.logChannels.voice, embed);
+        return this.sendToChannel(guild, this.logChannelIds.voice, embed);
     }
 
     /**
      * Envoyer un log serveur (config changes)
      */
     async logGuild(guild, action, details) {
-        if (!this.logChannels.guild) return;
+        if (!this.logChannelIds.guild) return;
 
         const embed = new EmbedBuilder()
             .setColor('#0099FF')
@@ -225,14 +225,14 @@ class LogService {
             });
         }
 
-        return this.sendToChannel(guild, this.logChannels.guild, embed);
+        return this.sendToChannel(guild, this.logChannelIds.guild, embed);
     }
 
     /**
      * Envoyer un log sécurité (detections, alerts)
      */
     async logSecurity(guild, action, details) {
-        if (!this.logChannels.security) return;
+        if (!this.logChannelIds.security) return;
 
         const embed = new EmbedBuilder()
             .setColor('#FF0000')
@@ -264,14 +264,14 @@ class LogService {
             });
         }
 
-        return this.sendToChannel(guild, this.logChannels.security, embed);
+        return this.sendToChannel(guild, this.logChannelIds.security, embed);
     }
 
     /**
      * Envoyer un log rôles (assignation, suppression)
      */
     async logRoles(guild, action, details) {
-        if (!this.logChannels.roles) return;
+        if (!this.logChannelIds.roles) return;
 
         const embed = new EmbedBuilder()
             .setColor('#9900FF')
@@ -296,14 +296,14 @@ class LogService {
             );
         }
 
-        return this.sendToChannel(guild, this.logChannels.roles, embed);
+        return this.sendToChannel(guild, this.logChannelIds.roles, embed);
     }
 
     /**
      * Envoyer un log canaux (create/delete/edit)
      */
     async logChannels(guild, action, details) {
-        if (!this.logChannels.channels) return;
+        if (!this.logChannelIds.channels) return;
 
         const embed = new EmbedBuilder()
             .setColor(action === 'CREATE' ? '#00FF00' : action === 'DELETE' ? '#FF0000' : '#FFA500')
@@ -329,7 +329,7 @@ class LogService {
             );
         }
 
-        return this.sendToChannel(guild, this.logChannels.channels, embed);
+        return this.sendToChannel(guild, this.logChannelIds.channels, embed);
     }
 
     /**
@@ -397,14 +397,14 @@ class LogService {
      * Configurer les IDs des canaux de log
      */
     setLogChannels(channels) {
-        this.logChannels = { ...this.logChannels, ...channels };
+        this.logChannelIds = { ...this.logChannelIds, ...channels };
     }
 
     /**
      * Obtenir les informations de configuration
      */
     getLogChannels() {
-        return this.logChannels;
+        return this.logChannelIds;
     }
 }
 
