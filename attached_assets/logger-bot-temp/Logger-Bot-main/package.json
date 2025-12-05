@@ -1,0 +1,26 @@
+{
+  "name": "logger-bot",
+  "version": "1.0.7",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "nodemon src/main.js",
+    "prod": "node ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devdeem/Logger-Bot.git"
+  },
+  "keywords": [],
+  "author": "deemdev",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "nodemon": "^3.0.2",
+    "term-logger": "^1.2.5"
+  },
+  "bugs": {
+    "url": "https://github.com/devdeem/Logger-Bot/issues"
+  },
+  "homepage": "https://github.com/devdeem/Logger-Bot#readme"
+}
