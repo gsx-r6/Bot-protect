@@ -6,7 +6,7 @@ const logger = require('../utils/logger');
 const LogService = require('../services/LogService');
 const LoggerService = require('../services/LoggerService');
 
-class HarukaClient extends Client {
+class NamiClient extends Client {
     constructor() {
         super({
             intents: [
@@ -55,8 +55,8 @@ class HarukaClient extends Client {
         } catch (e) {
             logger.warn('Pas de statsVoiceUpdater ou échec du démarrage : ' + (e.message || e));
         }
-        logger.info('HarukaClient démarré');
+        logger.info('NamiClient démarré avec succès');
     }
 }
 
-module.exports = HarukaClient;
+module.exports = NamiClient;

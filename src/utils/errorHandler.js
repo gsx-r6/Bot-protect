@@ -135,7 +135,8 @@ class ErrorHandler {
                 allowedMentions: { repliedUser: false }
             });
         } catch (e) {
-            console.error('Erreur lors de l\'envoi de l\'embed d\'erreur:', e);
+            const logger = require('../utils/logger');
+            logger.error('Erreur lors de l\'envoi de l\'embed d\'erreur:', e);
         }
     }
 
@@ -183,7 +184,7 @@ class ErrorHandler {
             .setColor('#0099FF')
             .setTitle(`📖 Aide - ${command.name.toUpperCase()}`)
             .setDescription(command.description || 'Aucune description')
-            .setFooter({ text: 'Haruka Protect ⚡' })
+            .setFooter({ text: 'Nami Protect ⚡' })
             .setTimestamp();
 
         if (command.usage) {

@@ -7,7 +7,8 @@ const path = require('path');
 // Forcer la timezone française si non définie
 process.env.TZ = process.env.TZ || 'Europe/Paris';
 
-console.log(`\n{+} UHQ MONDE - STARTING\n`);
+logger.info('🚀 {+} UHQ MONDE - STARTING');
+
 
 (async () => {
     try {
@@ -49,9 +50,14 @@ process.on('unhandledRejection', (reason, promise) => {
 
 process.on('uncaughtException', (err) => {
     logger.error('❌ Uncaught Exception:', err);
-    // On ne quitte pas forcément le processus pour garder le bot en vie, 
-    // sauf si c'est critique. Ici on log juste.
-    // process.exit(1); 
+    logger.error('Stack:', err.stack);
+
+    // Graceful shutdown après exception critique
+    logger.error('⚠️ Arrêt du bot dans 3 secondes pour éviter un état instable...');
+    setTimeout(() => {
+        logger.error('🛑 Arrêt forcé du bot après exception critique');
+        process.exit(1);
+    }, 3000);
 });
 
 process.on('SIGINT', () => {
