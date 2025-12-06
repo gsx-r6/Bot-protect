@@ -26,6 +26,7 @@ class RankPermissionService {
                 }
             } catch (err) {
                 logger.error('Error checking blacklist: ' + err.message);
+                return { canGive: false, reason: 'Erreur lors de la vérification de la blacklist. Action bloquée par sécurité.' };
             }
         }
 
@@ -153,7 +154,7 @@ class RankPermissionService {
             if (dbPermission) {
                 try {
                     const allowedRoles = JSON.parse(dbPermission.can_give_roles || '[]');
-                    if (allowedRoles.includes(targetRoleId)) {
+                    if (Array.isArray(allowedRoles) && allowedRoles.includes(targetRoleId)) {
                         return { canGive: true };
                     }
                 } catch (err) {

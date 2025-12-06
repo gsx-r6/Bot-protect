@@ -9,7 +9,8 @@ const LOG_TYPES = {
     leave_log: { label: 'Départs', emoji: '➖', description: 'Départ de membres' },
     message_log: { label: 'Messages', emoji: '💬', description: 'Suppression / Modification de messages' },
     voice_log: { label: 'Vocal', emoji: '🎤', description: 'Activité vocale (join/leave/mute/etc)' },
-    mod_log: { label: 'Modération', emoji: '🛡️', description: 'Actions de modération' }
+    mod_log: { label: 'Modération', emoji: '🛡️', description: 'Actions de modération' },
+    automod_log: { label: 'AutoMod', emoji: '🤖', description: 'Alertes automod (insultes, argent, etc)' }
 };
 
 module.exports = {

@@ -105,6 +105,7 @@ class DB {
             message_log TEXT,
             voice_log TEXT,
             mod_log TEXT,
+            automod_log TEXT,
             updated_at TEXT
         )`).run();
 
@@ -120,6 +121,15 @@ class DB {
                 logger.info('Running migration: Adding embed_color column to guild_config');
                 this.db.prepare("ALTER TABLE guild_config ADD COLUMN embed_color TEXT DEFAULT '#FF69B4'").run();
                 logger.info('Migration completed: embed_color column added successfully');
+            }
+
+            const loggerTableInfo = this.db.prepare("PRAGMA table_info(logger_channels)").all();
+            const hasAutomodLog = loggerTableInfo.some(col => col.name === 'automod_log');
+
+            if (!hasAutomodLog) {
+                logger.info('Running migration: Adding automod_log column to logger_channels');
+                this.db.prepare("ALTER TABLE logger_channels ADD COLUMN automod_log TEXT").run();
+                logger.info('Migration completed: automod_log column added successfully');
             }
         } catch (err) {
             logger.warn('Migration check/execution failed (might be normal if table does not exist yet): ' + err.message);
@@ -248,7 +258,7 @@ class DB {
     }
 
     setLoggerChannel(guildId, logType, channelId) {
-        const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log'];
+        const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log', 'automod_log'];
         if (!validTypes.includes(logType)) {
             throw new Error(`Invalid log type: ${logType}`);
         }
@@ -262,7 +272,7 @@ class DB {
     }
 
     removeLoggerChannel(guildId, logType) {
-        const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log'];
+        const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log', 'automod_log'];
         if (!validTypes.includes(logType)) {
             throw new Error(`Invalid log type: ${logType}`);
         }

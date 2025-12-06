@@ -7,7 +7,14 @@ module.exports = {
     async execute(message, client) {
         if (!message.guild || message.author.bot) return;
 
-        const AUTOMOD_CHANNEL_ID = '1440404482541355212';
+        if (!client.loggerService) return;
+
+        const config = client.loggerService.getConfig(message.guild.id);
+        const automodChannelId = config?.automod_log;
+        
+        if (!automodChannelId) {
+            return;
+        }
 
         const insultePatterns = [
             /\b(pd|pute|salope|connard|batard|fdp|enculé|enculer|ntm|tg|ferme ta gueule|ta gueule)\b/i
@@ -38,27 +45,22 @@ module.exports = {
         }
 
         if (hasInsulte || hasArgent) {
-            const automodChannel = message.guild.channels.cache.get(AUTOMOD_CHANNEL_ID);
-            if (automodChannel) {
-                try {
-                    const embed = new EmbedBuilder()
-                        .setColor(hasInsulte ? '#FF0000' : '#FFA500')
-                        .setTitle(`${hasInsulte ? '⚠️ INSULTE DÉTECTÉE' : '💰 MENTION D\'ARGENT DÉTECTÉE'}`)
-                        .setDescription(`Message de ${message.author} dans ${message.channel}`)
-                        .addFields(
-                            { name: '👤 Auteur', value: `${message.author.tag} (${message.author.id})`, inline: true },
-                            { name: '#️⃣ Salon', value: `<#${message.channel.id}>`, inline: true },
-                            { name: '📝 Contenu', value: message.content.substring(0, 1024) || 'Aucun contenu texte' },
-                            { name: '🔗 Lien', value: `[Aller au message](${message.url})` }
-                        )
-                        .setTimestamp();
+            try {
+                const embed = new EmbedBuilder()
+                    .setColor(hasInsulte ? '#FF0000' : '#FFA500')
+                    .setTitle(`${hasInsulte ? '⚠️ INSULTE DÉTECTÉE' : '💰 MENTION D\'ARGENT DÉTECTÉE'}`)
+                    .setDescription(`Message de ${message.author} dans ${message.channel}`)
+                    .addFields(
+                        { name: '👤 Auteur', value: `${message.author.tag} (${message.author.id})`, inline: true },
+                        { name: '#️⃣ Salon', value: `<#${message.channel.id}>`, inline: true },
+                        { name: '📝 Contenu', value: message.content.substring(0, 1024) || 'Aucun contenu texte' },
+                        { name: '🔗 Lien', value: `[Aller au message](${message.url})` }
+                    )
+                    .setTimestamp();
 
-                    await automodChannel.send({ embeds: [embed] });
-                    // Optionnel: Supprimer le message si c'est une insulte grave ?
-                    // Pour l'instant on garde le comportement original (juste log)
-                } catch (err) {
-                    logger.error('Error sending automod alert: ' + err.message);
-                }
+                await client.loggerService.sendLog(message.guild, 'automod_log', embed);
+            } catch (err) {
+                logger.error('Error sending automod alert: ' + err.message);
             }
         }
     }
