@@ -7,21 +7,6 @@ module.exports = {
     
     async execute(oldState, newState, client) {
         try {
-            const statsJob = require('../../jobs/statsVoiceUpdater');
-            if (statsJob && statsJob.updateOnce && oldState.channelId !== newState.channelId) {
-                await statsJob.updateOnce(client, newState.guild);
-            }
-
-            if (client.logs && oldState.channelId !== newState.channelId) {
-                if (!oldState.channelId && newState.channelId) {
-                    client.logs.logVoice(newState.guild, 'JOIN', { user: newState.member.user, channel: newState.channel }).catch(() => {});
-                } else if (oldState.channelId && !newState.channelId) {
-                    client.logs.logVoice(newState.guild, 'LEAVE', { user: oldState.member.user, channel: oldState.channel }).catch(() => {});
-                } else {
-                    client.logs.logVoice(newState.guild, 'MOVE', { user: newState.member.user, channel: newState.channel }).catch(() => {});
-                }
-            }
-
             if (client.loggerService) {
                 if (!oldState.channelId && newState.channelId) {
                     client.loggerService.logVoiceJoin(newState);
@@ -62,6 +47,15 @@ module.exports = {
                 if (oldState.selfVideo !== newState.selfVideo) {
                     client.loggerService.logVoiceVideo(newState, newState.selfVideo);
                 }
+            }
+
+            if (oldState.channelId !== newState.channelId) {
+                try {
+                    const statsJob = require('../../jobs/statsVoiceUpdater');
+                    if (statsJob && statsJob.updateOnce) {
+                        statsJob.updateOnce(client, newState.guild).catch(() => {});
+                    }
+                } catch (e) {}
             }
         } catch (error) {
             logger.error('[VoiceStateUpdate] Erreur:', error);
