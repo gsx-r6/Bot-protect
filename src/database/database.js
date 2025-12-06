@@ -15,7 +15,33 @@ class DB {
 
     _init() {
         this.db.prepare(`CREATE TABLE IF NOT EXISTS sanctions (id INTEGER PRIMARY KEY, guild TEXT, user TEXT, type TEXT, reason TEXT, moderator TEXT, date TEXT)`).run();
-        this.db.prepare(`CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY, guild TEXT, channel TEXT, owner TEXT, status TEXT, created_at TEXT)`).run();
+        this.db.prepare(`CREATE TABLE IF NOT EXISTS tickets (
+            id INTEGER PRIMARY KEY,
+            guild TEXT,
+            channel TEXT,
+            owner TEXT,
+            claimed_by TEXT,
+            topic TEXT,
+            priority TEXT DEFAULT 'normal',
+            status TEXT DEFAULT 'open',
+            created_at TEXT,
+            closed_at TEXT,
+            closed_by TEXT
+        )`).run();
+
+        this.db.prepare(`CREATE TABLE IF NOT EXISTS ticket_config (
+            guild_id TEXT PRIMARY KEY,
+            staff_role TEXT,
+            category_id TEXT,
+            log_channel TEXT,
+            max_tickets INTEGER DEFAULT 1,
+            panel_title TEXT DEFAULT 'Support Tickets',
+            panel_description TEXT DEFAULT 'Cliquez sur le bouton ci-dessous pour créer un ticket.',
+            panel_color TEXT DEFAULT '#5865F2',
+            welcome_message TEXT DEFAULT 'Bienvenue {user} ! Un membre du staff va vous assister.',
+            transcript_enabled INTEGER DEFAULT 1,
+            updated_at TEXT
+        )`).run();
         this.db.prepare(`CREATE TABLE IF NOT EXISTS user_data (id INTEGER PRIMARY KEY, user_id TEXT UNIQUE, data TEXT, updated_at TEXT)`).run();
 
         this.db.prepare(`CREATE TABLE IF NOT EXISTS guild_config (
@@ -131,6 +157,19 @@ class DB {
                 this.db.prepare("ALTER TABLE logger_channels ADD COLUMN automod_log TEXT").run();
                 logger.info('Migration completed: automod_log column added successfully');
             }
+
+            const ticketsTableInfo = this.db.prepare("PRAGMA table_info(tickets)").all();
+            const hasClaimedBy = ticketsTableInfo.some(col => col.name === 'claimed_by');
+
+            if (!hasClaimedBy) {
+                logger.info('Running migration: Adding new columns to tickets table');
+                this.db.prepare("ALTER TABLE tickets ADD COLUMN claimed_by TEXT").run();
+                this.db.prepare("ALTER TABLE tickets ADD COLUMN topic TEXT").run();
+                this.db.prepare("ALTER TABLE tickets ADD COLUMN priority TEXT DEFAULT 'normal'").run();
+                this.db.prepare("ALTER TABLE tickets ADD COLUMN closed_at TEXT").run();
+                this.db.prepare("ALTER TABLE tickets ADD COLUMN closed_by TEXT").run();
+                logger.info('Migration completed: tickets table updated successfully');
+            }
         } catch (err) {
             logger.warn('Migration check/execution failed (might be normal if table does not exist yet): ' + err.message);
         }
@@ -142,9 +181,9 @@ class DB {
     }
 
     // Tickets helpers
-    addTicket(guild, channel, owner) {
-        const stmt = this.db.prepare('INSERT INTO tickets (guild,channel,owner,status,created_at) VALUES (?,?,?,?,?)');
-        const info = stmt.run(guild, channel, owner, 'open', new Date().toISOString());
+    addTicket(guild, channel, owner, topic = null) {
+        const stmt = this.db.prepare('INSERT INTO tickets (guild, channel, owner, topic, status, created_at) VALUES (?,?,?,?,?,?)');
+        const info = stmt.run(guild, channel, owner, topic, 'open', new Date().toISOString());
         return info.lastInsertRowid;
     }
 
@@ -153,9 +192,66 @@ class DB {
         return stmt.get(channel);
     }
 
-    closeTicket(channel) {
-        const stmt = this.db.prepare('UPDATE tickets SET status = ?, updated_at = ? WHERE channel = ?');
-        return stmt.run('closed', new Date().toISOString(), channel);
+    getOpenTicketsByUser(guildId, userId) {
+        const stmt = this.db.prepare('SELECT * FROM tickets WHERE guild = ? AND owner = ? AND status = ?');
+        return stmt.all(guildId, userId, 'open');
+    }
+
+    getOpenTicketsCount(guildId, userId) {
+        const stmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND owner = ? AND status = ?');
+        return stmt.get(guildId, userId, 'open').count;
+    }
+
+    getAllOpenTickets(guildId) {
+        const stmt = this.db.prepare('SELECT * FROM tickets WHERE guild = ? AND status = ? ORDER BY created_at DESC');
+        return stmt.all(guildId, 'open');
+    }
+
+    claimTicket(channelId, claimedBy) {
+        const stmt = this.db.prepare('UPDATE tickets SET claimed_by = ? WHERE channel = ?');
+        return stmt.run(claimedBy, channelId);
+    }
+
+    closeTicket(channelId, closedBy) {
+        const stmt = this.db.prepare('UPDATE tickets SET status = ?, closed_at = ?, closed_by = ? WHERE channel = ?');
+        return stmt.run('closed', new Date().toISOString(), closedBy, channelId);
+    }
+
+    getTicketStats(guildId) {
+        const totalStmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ?');
+        const openStmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?');
+        const closedStmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?');
+        
+        return {
+            total: totalStmt.get(guildId).count,
+            open: openStmt.get(guildId, 'open').count,
+            closed: closedStmt.get(guildId, 'closed').count
+        };
+    }
+
+    // Ticket config helpers
+    getTicketConfig(guildId) {
+        const stmt = this.db.prepare('SELECT * FROM ticket_config WHERE guild_id = ?');
+        return stmt.get(guildId);
+    }
+
+    setTicketConfig(guildId, key, value) {
+        const validKeys = ['staff_role', 'category_id', 'log_channel', 'max_tickets', 'panel_title', 'panel_description', 'panel_color', 'welcome_message', 'transcript_enabled'];
+        if (!validKeys.includes(key)) {
+            throw new Error(`Invalid ticket config key: ${key}`);
+        }
+
+        const config = this.getTicketConfig(guildId);
+        if (!config) {
+            this.db.prepare(`INSERT INTO ticket_config (guild_id, ${key}, updated_at) VALUES (?, ?, ?)`).run(guildId, value, new Date().toISOString());
+        } else {
+            this.db.prepare(`UPDATE ticket_config SET ${key} = ?, updated_at = ? WHERE guild_id = ?`).run(value, new Date().toISOString(), guildId);
+        }
+    }
+
+    resetTicketConfig(guildId) {
+        const stmt = this.db.prepare('DELETE FROM ticket_config WHERE guild_id = ?');
+        return stmt.run(guildId);
     }
 
     // User data helpers (for profile deletion etc.)
