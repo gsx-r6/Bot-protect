@@ -18,18 +18,33 @@ class BackupService {
      */
     async createBackup(guild) {
         try {
+            if (!guild) {
+                throw new Error('Guild is undefined');
+            }
+
             // Fetch guild data to ensure cache is populated
-            await guild.fetch();
-            await guild.roles.fetch();
-            await guild.channels.fetch();
-            await guild.emojis.fetch();
+            try {
+                await guild.fetch();
+            } catch (e) {
+                logger.warn('[Backup] Could not fetch guild:', e.message);
+            }
+            
+            if (guild.roles) {
+                try { await guild.roles.fetch(); } catch (e) { logger.warn('[Backup] Could not fetch roles:', e.message); }
+            }
+            if (guild.channels) {
+                try { await guild.channels.fetch(); } catch (e) { logger.warn('[Backup] Could not fetch channels:', e.message); }
+            }
+            if (guild.emojis) {
+                try { await guild.emojis.fetch(); } catch (e) { logger.warn('[Backup] Could not fetch emojis:', e.message); }
+            }
 
             const backup = {
                 id: guild.id,
                 name: guild.name,
-                icon: guild.iconURL({ size: 1024 }),
-                banner: guild.bannerURL({ size: 1024 }),
-                description: guild.description,
+                icon: guild.iconURL ? guild.iconURL({ size: 1024 }) : null,
+                banner: guild.bannerURL ? guild.bannerURL({ size: 1024 }) : null,
+                description: guild.description || null,
                 createdAt: Date.now(),
                 roles: [],
                 channels: [],
@@ -38,62 +53,69 @@ class BackupService {
             };
 
             // Sauvegarder les rôles (sauf @everyone)
-            for (const role of guild.roles.cache.values()) {
-                if (role.name === '@everyone') continue;
-
-                backup.roles.push({
-                    id: role.id,
-                    name: role.name,
-                    color: role.color,
-                    hoist: role.hoist,
-                    position: role.position,
-                    permissions: role.permissions.bitfield.toString(),
-                    mentionable: role.mentionable
-                });
+            if (guild.roles && guild.roles.cache) {
+                for (const role of guild.roles.cache.values()) {
+                    if (role.name === '@everyone') continue;
+                    backup.roles.push({
+                        id: role.id,
+                        name: role.name,
+                        color: role.color,
+                        hoist: role.hoist,
+                        position: role.position,
+                        permissions: role.permissions.bitfield.toString(),
+                        mentionable: role.mentionable
+                    });
+                }
             }
 
             // Sauvegarder les catégories et salons
-            for (const channel of guild.channels.cache.values()) {
-                if (channel.type === 4) { // Category
-                    backup.categories.push({
-                        id: channel.id,
-                        name: channel.name,
-                        position: channel.position
-                    });
-                } else {
-                    const channelData = {
-                        id: channel.id,
-                        name: channel.name,
-                        type: channel.type,
-                        position: channel.position,
-                        parentId: channel.parentId,
-                        topic: channel.topic || null,
-                        nsfw: channel.nsfw || false,
-                        rateLimitPerUser: channel.rateLimitPerUser || 0,
-                        permissions: []
-                    };
-
-                    // Sauvegarder les permissions
-                    for (const overwrite of channel.permissionOverwrites.cache.values()) {
-                        channelData.permissions.push({
-                            id: overwrite.id,
-                            type: overwrite.type,
-                            allow: overwrite.allow.bitfield.toString(),
-                            deny: overwrite.deny.bitfield.toString()
+            if (guild.channels && guild.channels.cache) {
+                for (const channel of guild.channels.cache.values()) {
+                    if (channel.type === 4) { // Category
+                        backup.categories.push({
+                            id: channel.id,
+                            name: channel.name,
+                            position: channel.position
                         });
-                    }
+                    } else {
+                        const channelData = {
+                            id: channel.id,
+                            name: channel.name,
+                            type: channel.type,
+                            position: channel.position,
+                            parentId: channel.parentId,
+                            topic: channel.topic || null,
+                            nsfw: channel.nsfw || false,
+                            rateLimitPerUser: channel.rateLimitPerUser || 0,
+                            permissions: []
+                        };
 
-                    backup.channels.push(channelData);
+                        // Sauvegarder les permissions
+                        if (channel.permissionOverwrites && channel.permissionOverwrites.cache) {
+                            for (const overwrite of channel.permissionOverwrites.cache.values()) {
+                                channelData.permissions.push({
+                                    id: overwrite.id,
+                                    type: overwrite.type,
+                                    allow: overwrite.allow.bitfield.toString(),
+                                    deny: overwrite.deny.bitfield.toString()
+                                });
+                            }
+                        }
+
+                        backup.channels.push(channelData);
+                    }
                 }
             }
 
             // Sauvegarder les emojis
-            for (const emoji of guild.emojis.cache.values()) {
-                backup.emojis.push({
-                    name: emoji.name,
-                    url: emoji.url,
-                    animated: emoji.animated
-                });
+            if (guild.emojis && guild.emojis.cache) {
+                for (const emoji of guild.emojis.cache.values()) {
+                    backup.emojis.push({
+                        name: emoji.name,
+                        url: emoji.url,
+                        animated: emoji.animated
+                    });
+                }
             }
 
             // Sauvegarder dans un fichier
