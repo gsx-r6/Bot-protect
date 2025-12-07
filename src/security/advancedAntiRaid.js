@@ -1,6 +1,6 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const db = require('../../database/database');
-const logger = require('../../utils/logger');
+const db = require('../database/database');
+const logger = require('../utils/logger');
 
 /**
  * Service de détection et prévention des raids avancés
