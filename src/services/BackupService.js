@@ -18,6 +18,12 @@ class BackupService {
      */
     async createBackup(guild) {
         try {
+            // Fetch guild data to ensure cache is populated
+            await guild.fetch();
+            await guild.roles.fetch();
+            await guild.channels.fetch();
+            await guild.emojis.fetch();
+
             const backup = {
                 id: guild.id,
                 name: guild.name,
