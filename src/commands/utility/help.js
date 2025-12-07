@@ -85,8 +85,7 @@ module.exports = {
                     `> *Tout ce dont vous avez besoin pour protéger et gérer votre serveur.*`
                 )
                 .addFields(
-                    { name: '❓ Besoin d\'aide sur une commande ?', value: `Faites \`${prefix}help <commande>\` pour voir les détails.` },
-                    { name: '🔗 Liens', value: '[Support](https://discord.gg/example) • [Inviter](https://discord.com/oauth2/authorize?client_id=' + client.user.id + '&permissions=8&scope=bot) • [Vote](https://top.gg/bot/' + client.user.id + ')', inline: true }
+                    { name: '❓ Besoin d\'aide sur une commande ?', value: `Faites \`${prefix}help <commande>\` pour voir les détails.` }
                 )
                 .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
                 .setFooter({ text: 'Nami Protect ⚡ - Système de Sécurité Avancé', iconURL: message.guild.iconURL() })
