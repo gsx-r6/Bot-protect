@@ -5,7 +5,7 @@ const logger = require('../utils/logger');
 
 class DB {
     constructor() {
-        const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'haruka.db');
+        const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'nami.db');
         const dir = path.dirname(dbPath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         this.db = new Database(dbPath);
@@ -221,7 +221,7 @@ class DB {
         const totalStmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ?');
         const openStmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?');
         const closedStmt = this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?');
-        
+
         return {
             total: totalStmt.get(guildId).count,
             open: openStmt.get(guildId, 'open').count,

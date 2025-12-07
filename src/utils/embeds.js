@@ -16,7 +16,7 @@ const make = (type, title, description, options = {}) => {
     const embed = new EmbedBuilder()
         .setColor(color)
         .setTimestamp()
-        .setFooter({ text: 'Haruka Protect ⚡' });
+        .setFooter({ text: 'Nami Protect ⚡' });
 
     if (title) embed.setTitle(title);
     if (description) embed.setDescription(description);

@@ -1,6 +1,6 @@
 # Overview
 
-Bot-Protect (also referenced as Nami-Protect, Haruka-Protect) is a Discord moderation and server management bot built with Discord.js v14. The bot provides comprehensive server administration, logging, security features, and automated moderation capabilities. It uses a message-based command system with a configurable prefix and implements role-based permission hierarchies for server management.
+Bot-Protect (also referenced as Nami-Protect) is a Discord moderation and server management bot built with Discord.js v14. The bot provides comprehensive server administration, logging, security features, and automated moderation capabilities. It uses a message-based command system with a configurable prefix and implements role-based permission hierarchies for server management.
 
 # Recent Changes
 
@@ -23,7 +23,7 @@ Preferred communication style: Simple, everyday language.
 **Runtime & Framework**
 - Node.js 18+ runtime with Discord.js v14 for Discord API integration
 - Message-based command system with prefix configuration (default: `+`)
-- Custom client class (`HarukaClient`) extending Discord.js Client with command/alias collections and cooldown management
+- Custom client class (`NamiClient`) extending Discord.js Client with command/alias collections and cooldown management
 
 **Command Handler Pattern**
 - Commands organized by category in `src/commands/` directory (administration, information, logging, moderation)
@@ -41,7 +41,7 @@ Preferred communication style: Simple, everyday language.
 
 **Database Layer**
 - SQLite3 via `better-sqlite3` for synchronous database operations
-- Database file stored in `data/haruka.db`
+- Database file stored in `data/nami.db`
 - Schema includes: sanctions, tickets, user_data, guild_config, warnings, notes, automod_config, logs_config, role_blacklist
 - Service layer pattern with dedicated services (ConfigService, AutomodService, RankPermissionService, LogService, CacheService)
 
@@ -142,7 +142,7 @@ Preferred communication style: Simple, everyday language.
 - Optional: `PREFIX`, `EMBED_COLOR`, log channel IDs (8 categories), stats channel IDs (3 types), `LOG_LEVEL`, security feature flags, automod thresholds
 
 **Data Storage**
-- SQLite database file: `data/haruka.db`
+- SQLite database file: `data/nami.db`
 - Log files directory: `data/logs/`
 - Cache, backups directories: `data/cache/`, `data/backups/`
 - All data directories include .gitkeep files for version control
