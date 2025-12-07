@@ -1,6 +1,6 @@
 {
   "name": "uhq-monde",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "{+} uhq Monde - Bot Discord de modération ultra-sécurisé",
   "main": "src/core/index.js",
   "scripts": {
