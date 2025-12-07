@@ -3,26 +3,28 @@ const {
     ActionRowBuilder,
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
-    ComponentType
+    ComponentType,
+    ButtonBuilder,
+    ButtonStyle
 } = require('discord.js');
 const ConfigService = require('../../services/ConfigService');
 
 const CATEGORY_CONFIG = {
-    'administration': { emoji: '⚙️', label: 'Administration', description: 'Gestion du serveur et configuration' },
-    'moderation': { emoji: '🛡️', label: 'Modération', description: 'Outils de sanction et de contrôle' },
-    'security': { emoji: '🔒', label: 'Sécurité', description: 'Anti-raid, anti-spam et protections' },
-    'logging': { emoji: '📝', label: 'Logs', description: 'Journaux d\'audit et surveillance' },
-    'utility': { emoji: '🔧', label: 'Utilitaire', description: 'Outils pratiques et divers' },
-    'information': { emoji: 'ℹ️', label: 'Information', description: 'Informations sur le serveur et le bot' },
-    'system': { emoji: '🔐', label: 'Système', description: 'Commandes système et debug' },
-    'staff': { emoji: '👥', label: 'Staff', description: 'Commandes réservées à l\'équipe' }
+    'security': { emoji: '🛡️', label: 'Sécurité', description: 'Anti-raid, Quarantine, Lockdown, Whitelist' },
+    'moderation': { emoji: '🔨', label: 'Modération', description: 'Ban, Kick, Mute, Warn, Mass Actions' },
+    'administration': { emoji: '⚙️', label: 'Administration', description: 'Setup, Config, Backup, Restore' },
+    'logging': { emoji: '📝', label: 'Logs & Audit', description: 'Journalisation des actions et événements' },
+    'utility': { emoji: '🔧', label: 'Utilitaires', description: 'Giveaway, Poll, Outils divers' },
+    'information': { emoji: 'ℹ️', label: 'Information', description: 'Infos serveur, utilisateur et bot' },
+    'staff': { emoji: '👮', label: 'Staff', description: 'Outils réservés aux modérateurs' },
+    'system': { emoji: '💻', label: 'Système', description: 'Métriques et débogage' }
 };
 
 module.exports = {
     name: 'help',
-    description: 'Centre d\'aide interactif et liste des commandes',
+    description: 'Affiche le panneau d\'aide interactif',
     category: 'utility',
-    aliases: ['h', 'aide', 'menu'],
+    aliases: ['aide', 'commands', 'menu'],
     cooldown: 5,
     usage: '[commande]',
 
@@ -30,148 +32,162 @@ module.exports = {
         try {
             const prefix = ConfigService.getPrefix(message.guild.id);
             const color = ConfigService.getEmbedColor(message.guild.id);
+            const isOwner = message.author.id === (process.env.OWNER_ID || client.config.OWNER_ID);
 
-            // Si un argument est fourni, afficher l'aide spécifique de la commande
+            // 1. AIDE SPÉCIFIQUE (si argument fourni)
             if (args[0]) {
-                return this.showCommandHelp(message, args[0], client, prefix, color);
+                const cmdName = args[0].toLowerCase();
+                const cmd = client.commands.get(cmdName) || client.commands.get(client.aliases.get(cmdName));
+
+                if (!cmd || (cmd.category === 'owner' && !isOwner)) {
+                    return message.reply({
+                        embeds: [new EmbedBuilder().setColor('Red').setDescription(`❌ Commande \`${cmdName}\` introuvable.`)]
+                    });
+                }
+
+                return this.showCommandHelp(message, cmd, prefix, color);
             }
 
-            // --- MENU PRINCIPAL INTERACTIF ---
+            // 2. MENU PRINCIPAL (Interactif)
 
-            // 1. Préparer les catégories
+            // Filtrer les catégories
             const categories = new Set();
             client.commands.forEach(cmd => {
-                if (cmd.category && cmd.category !== 'owner') {
+                if (cmd.category === 'owner' && !isOwner) return; // Cacher owner si pas owner
+                if (cmd.category && CATEGORY_CONFIG[cmd.category]) {
                     categories.add(cmd.category);
                 }
             });
 
-            // 2. Créer le Select Menu
+            // Trier les catégories (Sécurité en premier)
+            const sortedCategories = Array.from(categories).sort((a, b) => {
+                const priority = ['security', 'moderation', 'administration', 'utility', 'logging', 'information', 'staff', 'system'];
+                return priority.indexOf(a) - priority.indexOf(b);
+            });
+
+            // Créer le Select Menu
             const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('help_category_select')
-                .setPlaceholder('Choisir une catégorie...')
+                .setCustomId('help_menu')
+                .setPlaceholder('📂 Sélectionnez une catégorie...')
                 .addOptions(
                     new StringSelectMenuOptionBuilder()
                         .setLabel('Accueil')
-                        .setDescription('Retour à la page d\'accueil')
+                        .setDescription('Retour au menu principal')
                         .setValue('home')
                         .setEmoji('🏠')
                 );
 
-            // Trier et ajouter les options
-            const sortedCategories = Array.from(categories).sort();
             sortedCategories.forEach(cat => {
-                const config = CATEGORY_CONFIG[cat] || { emoji: '📁', label: cat, description: 'Commandes diverses' };
+                const conf = CATEGORY_CONFIG[cat];
                 selectMenu.addOptions(
                     new StringSelectMenuOptionBuilder()
-                        .setLabel(config.label)
-                        .setDescription(config.description)
+                        .setLabel(conf.label)
+                        .setDescription(conf.description)
                         .setValue(cat)
-                        .setEmoji(config.emoji)
+                        .setEmoji(conf.emoji)
                 );
             });
 
             const row = new ActionRowBuilder().addComponents(selectMenu);
 
-            // 3. Créer l'Embed d'Accueil
+            // Stats pour l'accueil
+            const uptime = this.formatUptime(client.uptime);
+            const ping = client.ws.ping;
+            const commandCount = client.commands.size;
+
+            // Embed Accueil
             const homeEmbed = new EmbedBuilder()
                 .setColor(color)
-                .setTitle(`⚡ Centre d'Aide - ${client.user.username}`)
-                .setDescription(
-                    `Bienvenue sur le panneau d'aide de **${client.user.username}**.\n` +
-                    `Utilisez le menu déroulant ci-dessous pour explorer les commandes par catégorie.\n\n` +
-                    `**Commandes Totales:** ${client.commands.size}\n` +
-                    `**Préfixe:** \`${prefix}\`\n\n` +
-                    `> *Tout ce dont vous avez besoin pour protéger et gérer votre serveur.*`
-                )
+                .setTitle(`🛡️ Panneau d'Aide - ${client.user.username}`)
+                .setDescription(`Bonjour **${message.author.username}** ! 👋\n\nJe suis **${client.user.username}**, un bot de protection avancé et de modération.\nUtilisez le menu ci-dessous pour explorer mes fonctionnalités.`)
                 .addFields(
-                    { name: '❓ Besoin d\'aide sur une commande ?', value: `Faites \`${prefix}help <commande>\` pour voir les détails.` }
+                    { name: '📊 Statistiques', value: `> 🤖 **Commandes:** ${commandCount}\n> 📶 **Ping:** ${ping}ms\n> ⏱️ **Uptime:** ${uptime}`, inline: false },
+                    { name: '💡 Astuce', value: `Utilisez \`${prefix}help <commande>\` pour avoir plus d'infos sur une commande spécifique.`, inline: false }
                 )
-                .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
-                .setFooter({ text: 'Nami Protect ⚡ - Système de Sécurité Avancé', iconURL: message.guild.iconURL() })
+                .setThumbnail(client.user.displayAvatarURL())
+                .setFooter({ text: 'Nami Protect ⚡ • v3.0.0', iconURL: message.guild.iconURL() })
                 .setTimestamp();
 
-            // 4. Envoyer le message
-            const response = await message.reply({
-                embeds: [homeEmbed],
-                components: [row]
-            });
+            const response = await message.reply({ embeds: [homeEmbed], components: [row] });
 
-            // 5. Créer le Collector
+            // Collecteur
             const collector = response.createMessageComponentCollector({
                 componentType: ComponentType.StringSelect,
-                time: 300000 // 5 minutes
+                time: 600000 // 10 minutes
             });
 
-            collector.on('collect', async interaction => {
-                if (interaction.user.id !== message.author.id) {
-                    return interaction.reply({ content: 'Ce menu est contrôlé par ' + message.author.tag, ephemeral: true });
+            collector.on('collect', async i => {
+                if (i.user.id !== message.author.id) {
+                    return i.reply({ content: '🚫 Ce menu vous n\'appartient pas.', ephemeral: true });
                 }
 
-                const selected = interaction.values[0];
+                const value = i.values[0];
 
-                if (selected === 'home') {
-                    await interaction.update({ embeds: [homeEmbed] });
+                if (value === 'home') {
+                    await i.update({ embeds: [homeEmbed] });
                 } else {
-                    // Afficher la catégorie
-                    const categoryEmbed = this.getCategoryEmbed(selected, client, prefix, color);
-                    await interaction.update({ embeds: [categoryEmbed] });
+                    const catEmbed = this.getCategoryEmbed(value, client, prefix, color);
+                    await i.update({ embeds: [catEmbed] });
                 }
             });
 
             collector.on('end', () => {
-                // Désactiver le menu après expiration
                 const disabledRow = new ActionRowBuilder().addComponents(selectMenu.setDisabled(true));
                 response.edit({ components: [disabledRow] }).catch(() => { });
             });
 
         } catch (err) {
-            client.logger.error('Help command error: ' + err.stack);
-            return message.reply('Une erreur est survenue lors de l\'affichage de l\'aide.');
+            client.logger.error('Help Error:', err);
+            message.reply('Une erreur est survenue lors de l\'affichage de l\'aide.');
         }
     },
 
     getCategoryEmbed(category, client, prefix, color) {
-        const config = CATEGORY_CONFIG[category] || { emoji: '📁', label: category, description: '' };
+        const conf = CATEGORY_CONFIG[category];
+        const commands = client.commands.filter(c => c.category === category);
 
-        const commands = client.commands
-            .filter(cmd => cmd.category === category)
-            .map(cmd => {
-                return `**${prefix}${cmd.name}**\n╰ ${cmd.description || 'Pas de description'}`;
-            })
-            .join('\n\n');
+        const cmdList = commands.map(cmd => {
+            return `**\`${prefix}${cmd.name}\`**\n╰ ${cmd.description}`;
+        }).join('\n\n');
 
         return new EmbedBuilder()
             .setColor(color)
-            .setTitle(`${config.emoji} ${config.label}`)
-            .setDescription(`*${config.description}*\n\n${commands || 'Aucune commande trouvée.'}`)
-            .setFooter({ text: `Utilisez ${prefix}help <commande> pour plus de détails` });
+            .setTitle(`${conf.emoji} Catégorie : ${conf.label}`)
+            .setDescription(`*${conf.description}*\n\n${cmdList}`)
+            .setFooter({ text: `Total : ${commands.size} commandes` });
     },
 
-    async showCommandHelp(message, commandName, client, prefix, color) {
-        const cmd = client.commands.get(commandName.toLowerCase()) ||
-            client.commands.get(client.aliases.get(commandName.toLowerCase()));
-
-        if (!cmd) {
-            return message.reply(`❌ Commande \`${commandName}\` introuvable.`);
-        }
-
+    showCommandHelp(message, cmd, prefix, color) {
         const embed = new EmbedBuilder()
             .setColor(color)
-            .setTitle(`📖 Aide : ${cmd.name}`)
-            .setDescription(cmd.description || 'Pas de description.')
+            .setTitle(`📖 ${prefix}${cmd.name}`)
+            .setDescription(cmd.description || 'Aucune description.')
             .addFields(
-                { name: 'Utilisation', value: `\`${prefix}${cmd.name} ${cmd.usage || ''}\``, inline: true },
-                { name: 'Catégorie', value: cmd.category || 'Autre', inline: true },
-                { name: 'Cooldown', value: `${cmd.cooldown || 3}s`, inline: true },
-                { name: 'Aliases', value: cmd.aliases ? cmd.aliases.join(', ') : 'Aucun', inline: true }
+                { name: '📂 Catégorie', value: cmd.category || 'Aucune', inline: true },
+                { name: '⌨️ Utilisation', value: `\`${prefix}${cmd.name} ${cmd.usage || ''}\``, inline: true },
+                { name: '⏱️ Cooldown', value: `${cmd.cooldown || 0}s`, inline: true },
+                { name: '🔗 Aliases', value: cmd.aliases ? cmd.aliases.map(a => `\`${a}\``).join(', ') : 'Aucun', inline: false }
             )
-            .setFooter({ text: 'Nami Protect ⚡' });
+            .setFooter({ text: 'Syntaxe: <requis> [optionnel]' });
 
         if (cmd.permissions) {
-            embed.addFields({ name: 'Permissions', value: `\`${cmd.permissions.join(', ')}\``, inline: false });
+            embed.addFields({ name: '🔒 Permissions', value: `\`${cmd.permissions.join(', ')}\``, inline: false });
         }
 
         return message.reply({ embeds: [embed] });
+    },
+
+    formatUptime(ms) {
+        const d = Math.floor(ms / (1000 * 60 * 60 * 24));
+        const h = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+
+        const parts = [];
+        if (d > 0) parts.push(`${d}j`);
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0) parts.push(`${m}m`);
+        if (parts.length === 0) return 'Just started';
+
+        return parts.join(' ');
     }
 };
