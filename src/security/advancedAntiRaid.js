@@ -8,8 +8,20 @@ const logger = require('../utils/logger');
 class AdvancedAntiRaid {
     constructor(client) {
         this.client = client;
-        this.joinCache = new Map(); // userId -> timestamp[]
-        this.suspiciousPatterns = new Map(); // guildId -> count
+        this.joinCache = new Map();
+        this.suspiciousPatterns = new Map();
+        this.cleanupInterval = null;
+    }
+
+    init() {
+        this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
+        logger.info('AdvancedAntiRaid initialized with periodic cleanup');
+    }
+
+    destroy() {
+        if (this.cleanupInterval) {
+            clearInterval(this.cleanupInterval);
+        }
     }
 
     /**
