@@ -50,16 +50,19 @@ class Logger {
     }
 
     /**
-     * Écrire dans un fichier de log (avec gestion d'erreurs)
+     * Écrire dans un fichier de log (mode asynchrone non-bloquant)
      */
     writeToFile(filePath, level, message) {
         try {
             const timestamp = this.getTimestamp();
             const logLine = `${timestamp} [${level}] ${message}\n`;
             
-            fs.appendFileSync(filePath, logLine, 'utf8');
+            fs.appendFile(filePath, logLine, 'utf8', (err) => {
+                if (err) {
+                    console.error(chalk.red('❌ Erreur écriture log:'), err.message);
+                }
+            });
         } catch (error) {
-            // En cas d'erreur d'écriture, afficher dans console mais ne pas crasher
             console.error(chalk.red('❌ Erreur écriture log:'), error.message);
         }
     }

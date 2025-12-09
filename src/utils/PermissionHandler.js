@@ -5,6 +5,21 @@ const logger = require('./logger');
 // Format: { userID: { commandName: { count: 0, resetTime: timestamp } } }
 const rateLimits = new Map();
 
+// Nettoyage périodique des rate limits expirés
+setInterval(() => {
+    const now = Date.now();
+    for (const [userId, commands] of rateLimits.entries()) {
+        for (const [cmd, data] of Object.entries(commands)) {
+            if (data.resetTime < now) {
+                delete commands[cmd];
+            }
+        }
+        if (Object.keys(commands).length === 0) {
+            rateLimits.delete(userId);
+        }
+    }
+}, 60000);
+
 class PermissionHandler {
 
     /**

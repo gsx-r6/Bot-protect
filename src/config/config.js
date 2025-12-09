@@ -1,6 +1,6 @@
 module.exports = {
     PREFIX: process.env.PREFIX || '+',
-    OWNER_ID: process.env.OWNER_ID || 1431362559079874630,
+    OWNER_ID: process.env.OWNER_ID || null,
     EMBED_COLOR: process.env.EMBED_COLOR || '#FF69B4',
 
     // 📊 Stats channels (IDs) - Configure via environment variables

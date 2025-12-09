@@ -1,6 +1,6 @@
 module.exports = {
     // 👑 Propriétaire (Bypass total)
-    OWNER_ID: process.env.OWNER_ID || '1431362559079874630',
+    OWNER_ID: process.env.OWNER_ID || null,
 
     // 🛡️ Niveaux de permission (11 = Le plus bas, 1 = Le plus haut)
     // Les IDs sont ceux trouvés dans l'ancien perms.js

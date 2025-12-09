@@ -14,12 +14,15 @@ function loadEnvironment() {
         logger.info('.env not found - using process.env');
     }
 
-    // Basic validation
+    // Basic validation - fail fast if critical vars missing
     const required = ['TOKEN', 'OWNER_ID'];
     const missing = required.filter(k => !process.env[k]);
     if (missing.length > 0) {
-        logger.warn(`Missing required env vars: ${missing.join(', ')}`);
+        logger.error(`❌ CRITICAL: Missing required env vars: ${missing.join(', ')}`);
+        logger.error('Configure these in Replit Secrets before starting the bot.');
+        process.exit(1);
     }
+    logger.success('✅ All required environment variables loaded');
 }
 
 module.exports = { loadEnvironment };
