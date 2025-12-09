@@ -23,8 +23,28 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error(`Vous avez atteint votre limite de bannissements pour cette heure.\nRestant: ${remaining}`)] });
             }
 
-            const target = await resolveMember(message.guild, args[0]);
-            if (!target) return message.reply({ embeds: [embeds.error('Membre introuvable.')] });
+            let targetUser = message.mentions.users.first();
+            if (!targetUser && args[0]) {
+                try {
+                    // Si c'est un ID
+                    targetUser = await client.users.fetch(args[0]);
+                } catch (e) {
+                    // ID invalide ou user introuvable
+                }
+            }
+
+            if (!targetUser) return message.reply({ embeds: [embeds.error('Membre introuvable. Mentionnez-le ou utilisez son ID.')] });
+
+            const target = await message.guild.members.fetch(targetUser.id).catch(() => null);
+
+            // Cas specifique BAN : on peut bannir qqun qui n'est PAS sur le serveur (hackban)
+            // Donc si target member est null, on peut quand meme bannir via l'objet user (si on veut)
+            // Mais pour l'instant on garde la logique "resolveMember" classique ou on adapte pour hackban si besoin.
+            // Le code original utilisait "resolveMember" qui checkait member.
+            // Si on veut permettre le ban par ID d'un user hors serveur, il faut adapter plus de logique.
+            // Pour l'instant on reste sur la logique "Membre du serveur". 
+
+            if (!target) return message.reply({ embeds: [embeds.error('Ce membre n\'est pas sur le serveur (Pour bannir un user externe, utilisez massban ou une commande hackban).')] });
 
             // 3. Vérification de la Hiérarchie (Nouveau système)
             if (!PermissionHandler.checkHierarchy(message.member, target)) {

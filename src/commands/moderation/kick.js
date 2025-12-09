@@ -19,8 +19,18 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error(`Vous avez atteint votre limite d'expulsions pour cette heure.\nRestant: ${remaining}`)] });
             }
 
-            const target = await resolveMember(message.guild, args[0]);
-            if (!target) return message.reply({ embeds: [embeds.error('Membre introuvable.')] });
+            let targetUser = message.mentions.users.first();
+            if (!targetUser && args[0]) {
+                try {
+                    targetUser = await client.users.fetch(args[0]);
+                } catch (e) { }
+            }
+
+            if (!targetUser) return message.reply({ embeds: [embeds.error('Membre introuvable (Mention ou ID).')] });
+
+            // Pour Kick il FAUT que le membre soit dans le serveur
+            const target = await message.guild.members.fetch(targetUser.id).catch(() => null);
+            if (!target) return message.reply({ embeds: [embeds.error('Ce membre n\'est pas sur le serveur.')] });
 
             // Vérification de la Hiérarchie
             if (!PermissionHandler.checkHierarchy(message.member, target)) {

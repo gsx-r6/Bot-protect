@@ -2,6 +2,7 @@ const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const db = require('../../database/database');
 const ConfigService = require('../../services/ConfigService');
+const { resolveMember } = require('../../utils/validators');
 
 module.exports = {
     name: 'unblr',
@@ -11,20 +12,19 @@ module.exports = {
     permissions: [PermissionFlagsBits.ManageRoles],
     cooldown: 3,
     usage: '<@membre>',
-    
     async execute(message, args, client) {
         try {
             const REQUIRED_ROLE = '1434622694481072130';
             const requiredRole = message.guild.roles.cache.get(REQUIRED_ROLE);
-            
-            if (!message.member.roles.cache.has(REQUIRED_ROLE) && 
+
+            if (!message.member.roles.cache.has(REQUIRED_ROLE) &&
                 (!requiredRole || message.member.roles.highest.position <= requiredRole.position)) {
                 return message.reply({ embeds: [embeds.error(`Cette commande est réservée à <@&${REQUIRED_ROLE}> ou supérieur.`)] });
             }
 
-            const targetMember = message.mentions.members.first();
+            const targetMember = await resolveMember(message.guild, args[0]);
             if (!targetMember) {
-                return message.reply({ embeds: [embeds.error('Veuillez mentionner un membre.\nUsage: `+unblr @membre`')] });
+                return message.reply({ embeds: [embeds.error('Membre introuvable (Mention ou ID).\nUsage: `+unblr <@membre|ID>`')] });
             }
 
             db.db.prepare(`CREATE TABLE IF NOT EXISTS role_blacklist (

@@ -26,11 +26,19 @@ module.exports = {
 
     async execute(message, args, client) {
         if (!args[0]) {
-            return message.reply('❌ Usage: `+report @user <raison>`');
+            return message.reply('❌ Usage: `+report @user <raison>` ou `+report <ID> <raison>`');
         }
 
-        const target = message.mentions.members.first();
-        if (!target) return message.reply('❌ Utilisateur introuvable.');
+        let targetUser = message.mentions.users.first();
+        if (!targetUser && args[0]) {
+            try {
+                targetUser = await client.users.fetch(args[0]);
+            } catch (e) {
+                // ID invalide
+            }
+        }
+
+        if (!targetUser) return message.reply('❌ Utilisateur introuvable (Vérifiez l\'ID ou la mention).');
 
         const reason = args.slice(1).join(' ') || 'Aucune raison spécifiée';
 

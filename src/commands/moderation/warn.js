@@ -10,17 +10,24 @@ module.exports = {
     cooldown: 3,
     usage: '<@membre> <raison>',
     permissions: [PermissionsBitField.Flags.ModerateMembers],
-    
+
     async execute(message, args, client) {
         try {
             if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
                 return message.reply({ embeds: [embeds.error('Vous n\'avez pas la permission de gérer les avertissements.')] });
             }
 
-            const target = message.mentions.members.first();
-            if (!target) {
-                return message.reply({ embeds: [embeds.error('Veuillez mentionner un membre à avertir.')] });
+            let targetUser = message.mentions.users.first();
+            if (!targetUser && args[0]) {
+                try {
+                    targetUser = await client.users.fetch(args[0]);
+                } catch (e) { }
             }
+
+            if (!targetUser) return message.reply({ embeds: [embeds.error('Membre introuvable (Mention ou ID).')] });
+
+            const target = await message.guild.members.fetch(targetUser.id).catch(() => null);
+            if (!target) return message.reply({ embeds: [embeds.error('Ce membre n\'est pas sur le serveur.')] });
 
             if (target.id === message.author.id) {
                 return message.reply({ embeds: [embeds.error('Vous ne pouvez pas vous avertir vous-même.')] });
@@ -50,12 +57,14 @@ module.exports = {
             await message.reply({ embeds: [embed] });
 
             try {
-                await target.send({ embeds: [embeds.warn(
-                    `Vous avez reçu un avertissement sur **${message.guild.name}**\n\n` +
-                    `**Raison:** ${reason}\n` +
-                    `**Total:** ${totalWarns} avertissement(s)`,
-                    '⚠️ Avertissement'
-                )] });
+                await target.send({
+                    embeds: [embeds.warn(
+                        `Vous avez reçu un avertissement sur **${message.guild.name}**\n\n` +
+                        `**Raison:** ${reason}\n` +
+                        `**Total:** ${totalWarns} avertissement(s)`,
+                        '⚠️ Avertissement'
+                    )]
+                });
             } catch (e) {
                 // Impossible d'envoyer un MP
             }
@@ -71,7 +80,7 @@ module.exports = {
             }
 
             client.logger.command(`WARN: ${target.user.tag} by ${message.author.tag} - ${reason}`);
-            
+
         } catch (err) {
             client.logger.error('Error in warn command: ' + err.stack);
             return message.reply({ embeds: [embeds.error('Erreur lors de l\'avertissement.')] });

@@ -20,19 +20,40 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Utilisation: `+massrole <add|remove> @role @user1 @user2 ...`')] });
             }
 
+            const { resolveMember } = require('../../utils/validators');
+
             const action = args[0].toLowerCase();
             if (!['add', 'remove'].includes(action)) {
                 return message.reply({ embeds: [embeds.error('Action invalide. Utilisez `add` ou `remove`')] });
             }
 
-            const role = message.mentions.roles.first();
-            if (!role) {
-                return message.reply({ embeds: [embeds.error('Aucun rôle mentionné')] });
+            let role = message.mentions.roles.first();
+            if (!role && args[1]) {
+                role = message.guild.roles.cache.get(args[1]);
             }
 
-            const members = message.mentions.members;
+            if (!role) {
+                return message.reply({ embeds: [embeds.error('Aucun rôle valide trouvé (Mention ou ID)')] });
+            }
+
+            // Récupérer les membres cibles
+            let members = new Map();
+
+            // 1. Ajouter les mentions
+            message.mentions.members.forEach(m => members.set(m.id, m));
+
+            // 2. Parser les arguments restants pour chercher des IDs (à partir de l'index 2, car 0=action, 1=role)
+            for (let i = 2; i < args.length; i++) {
+                const arg = args[i];
+                // Eviter de re-traiter les mentions déjà gérées par discord.js (format <@...>)
+                if (!arg.startsWith('<@')) {
+                    const m = await resolveMember(message.guild, arg);
+                    if (m) members.set(m.id, m);
+                }
+            }
+
             if (members.size === 0) {
-                return message.reply({ embeds: [embeds.error('Aucun membre mentionné')] });
+                return message.reply({ embeds: [embeds.error('Aucun membre valide trouvé (Veuillez mentionner ou donner des IDs).')] });
             }
 
             // Vérifier que le rôle est gérable

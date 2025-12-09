@@ -2,6 +2,7 @@ const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const embeds = require('../../utils/embeds');
 const RankPermissionService = require('../../services/RankPermissionService');
 const ConfigService = require('../../services/ConfigService');
+const { resolveMember } = require('../../utils/validators');
 
 module.exports = {
     name: 'rank',
@@ -11,21 +12,25 @@ module.exports = {
     permissions: [PermissionFlagsBits.ManageRoles],
     cooldown: 3,
     usage: '<@membre> <@rôle> [add|remove]',
-    
+
     async execute(message, args, client) {
         try {
             if (!message.member.permissions.has(this.permissions || [])) {
                 return message.reply({ embeds: [embeds.error('Vous avez besoin de la permission "Gérer les rôles" pour utiliser cette commande.')] });
             }
 
-            const targetMember = message.mentions.members.first();
+            const targetMember = await resolveMember(message.guild, args[0]);
             if (!targetMember) {
-                return message.reply({ embeds: [embeds.error('Veuillez mentionner un membre.\nUsage: `+rank @membre @rôle [add|remove]`')] });
+                return message.reply({ embeds: [embeds.error('Membre introuvable. Mention ou ID.\nUsage: `+rank <@membre|ID> <@rôle|ID> [add|remove]`')] });
             }
 
-            const targetRole = message.mentions.roles.first();
+            let targetRole = message.mentions.roles.first();
+            if (!targetRole && args[1]) {
+                targetRole = message.guild.roles.cache.get(args[1]);
+            }
+
             if (!targetRole) {
-                return message.reply({ embeds: [embeds.error('Veuillez mentionner un rôle.\nUsage: `+rank @membre @rôle [add|remove]`')] });
+                return message.reply({ embeds: [embeds.error('Rôle introuvable. Mention ou ID.\nUsage: `+rank <@membre|ID> <@rôle|ID> [add|remove]`')] });
             }
 
             const action = args[2] ? args[2].toLowerCase() : 'add';
@@ -43,7 +48,7 @@ module.exports = {
 
             const isRemoval = action === 'remove';
             const permissionCheck = RankPermissionService.canGiveRole(message.guild, message.member, targetRole.id, targetMember, isRemoval);
-            
+
             if (!permissionCheck.canGive) {
                 return message.reply({ embeds: [embeds.error(`Vous ne pouvez pas ${isRemoval ? 'retirer' : 'donner'} ce rôle.\nRaison: ${permissionCheck.reason}`)] });
             }
@@ -122,10 +127,10 @@ module.exports = {
 
                 const PROTECTED_ROLES = ['1434622710532542494', '1440401167166341212', '1440401243087568957'];
                 const REQUIRED_ROLE_FOR_PROTECTED = '1434622673454891191';
-                
+
                 if (PROTECTED_ROLES.includes(targetRole.id)) {
                     const requiredRole = message.guild.roles.cache.get(REQUIRED_ROLE_FOR_PROTECTED);
-                    if (!message.member.roles.cache.has(REQUIRED_ROLE_FOR_PROTECTED) && 
+                    if (!message.member.roles.cache.has(REQUIRED_ROLE_FOR_PROTECTED) &&
                         (!requiredRole || message.member.roles.highest.position <= requiredRole.position)) {
                         return message.reply({ embeds: [embeds.error(`Ce rôle est protégé ! Seuls <@&${REQUIRED_ROLE_FOR_PROTECTED}> ou supérieur peuvent le retirer.`)] });
                     }

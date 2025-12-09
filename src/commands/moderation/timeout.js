@@ -10,35 +10,42 @@ module.exports = {
     cooldown: 3,
     usage: '<@membre> <durée> [raison]',
     permissions: [PermissionsBitField.Flags.ModerateMembers],
-    
+
     async execute(message, args, client) {
         try {
             if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
                 return message.reply({ embeds: [embeds.error('Vous n\'avez pas la permission de timeout des membres.')] });
             }
-            
-            const target = message.mentions.members.first();
-            if (!target) {
-                return message.reply({ embeds: [embeds.error('Veuillez mentionner un membre à timeout.')] });
+
+            let targetUser = message.mentions.users.first();
+            if (!targetUser && args[0]) {
+                try {
+                    targetUser = await client.users.fetch(args[0]);
+                } catch (e) { }
             }
-            
+
+            if (!targetUser) return message.reply({ embeds: [embeds.error('Membre introuvable (Mention ou ID).')] });
+
+            const target = await message.guild.members.fetch(targetUser.id).catch(() => null);
+            if (!target) return message.reply({ embeds: [embeds.error('Ce membre n\'est pas sur le serveur.')] });
+
             const permCheck = permHandler.canModerate(message.member, target, message.guild);
             if (!permCheck.allowed) {
                 return message.reply({ embeds: [embeds.error(permCheck.reason)] });
             }
-            
+
             const duration = args[1];
             if (!duration) {
                 return message.reply({ embeds: [embeds.error('Veuillez spécifier une durée (ex: 10m, 1h, 1d).')] });
             }
-            
+
             const ms = parseDuration(duration);
             if (!ms || ms > 28 * 24 * 60 * 60 * 1000) {
                 return message.reply({ embeds: [embeds.error('Durée invalide. Max: 28 jours. Format: 10m, 1h, 1d.')] });
             }
-            
+
             const reason = args.slice(2).join(' ') || 'Aucune raison fournie';
-            
+
             await target.timeout(ms, `${reason} | Par: ${message.author.tag}`);
 
             // Log vers LogService
@@ -63,20 +70,22 @@ module.exports = {
                 `**Modérateur:** ${message.author}`,
                 '⏱️ Timeout'
             );
-            
+
             await message.reply({ embeds: [embed] });
-            
+
             try {
-                await target.send({ embeds: [embeds.warn(
-                    `Vous avez été mis en timeout sur **${message.guild.name}**\n\n` +
-                    `**Durée:** ${duration}\n` +
-                    `**Raison:** ${reason}`,
-                    '⏱️ Timeout'
-                )] });
+                await target.send({
+                    embeds: [embeds.warn(
+                        `Vous avez été mis en timeout sur **${message.guild.name}**\n\n` +
+                        `**Durée:** ${duration}\n` +
+                        `**Raison:** ${reason}`,
+                        '⏱️ Timeout'
+                    )]
+                });
             } catch (e) {
                 // Impossible d'envoyer un MP
             }
-            
+
         } catch (error) {
             client.logger.error('Erreur timeout:', error);
             await message.reply({ embeds: [embeds.error('Une erreur est survenue.')] });
