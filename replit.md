@@ -44,6 +44,13 @@ A Discord moderation and security bot built with discord.js. The bot provides ex
 - `STATS_CHANNEL_ONLINE` - Channel ID for online stats
 - `STATS_CHANNEL_VOICE` - Channel ID for voice stats
 
+## Security Features (Updated Dec 2025)
+- **Fail-fast validation**: Bot exits immediately if TOKEN or OWNER_ID are missing
+- **Anti-Spam**: Automatically mutes spammers for 5 minutes with logging
+- **Anti-Raid**: Quarantines suspicious join patterns with dedicated role
+- **Memory Management**: Periodic cleanup of caches to prevent memory leaks
+- **Async Logging**: Non-blocking file logging for better performance
+
 ## Tech Stack
 - Node.js 18+
 - discord.js v14
