@@ -3,10 +3,10 @@ const embeds = require('../../utils/embeds');
 module.exports = {
     name: 'channelcount',
     description: 'Nombre de salons sur le serveur',
-    category: 'utility',
+    category: 'information',
     aliases: ['channels', 'salons'],
     cooldown: 5,
-    
+
     async execute(message, args, client) {
         try {
             const channels = message.guild.channels.cache;

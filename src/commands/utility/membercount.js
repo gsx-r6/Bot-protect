@@ -3,20 +3,20 @@ const embeds = require('../../utils/embeds');
 module.exports = {
     name: 'membercount',
     description: 'Nombre de membres sur le serveur',
-    category: 'utility',
+    category: 'information',
     aliases: ['members', 'mc'],
     cooldown: 3,
-    
+
     async execute(message, args, client) {
         try {
             const guild = message.guild;
             await guild.members.fetch();
-            
+
             const total = guild.memberCount;
             const humans = guild.members.cache.filter(m => !m.user.bot).size;
             const bots = guild.members.cache.filter(m => m.user.bot).size;
             const online = guild.members.cache.filter(m => m.presence?.status !== 'offline').size;
-            
+
             const embed = embeds.info('', '👥 Statistiques des membres', {
                 fields: [
                     { name: '📊 Total', value: `\`${total}\` membres`, inline: true },
@@ -28,9 +28,9 @@ module.exports = {
                 ],
                 thumbnail: guild.iconURL({ dynamic: true })
             });
-            
+
             await message.reply({ embeds: [embed] });
-            
+
         } catch (error) {
             client.logger.error('Erreur membercount:', error);
             await message.reply({ embeds: [embeds.error('Une erreur est survenue.')] });

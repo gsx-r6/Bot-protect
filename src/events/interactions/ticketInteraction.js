@@ -193,6 +193,43 @@ async function claimTicket(interaction) {
 
     db.claimTicket(interaction.channel.id, interaction.user.id);
 
+    // 1. Update the original message embed & disable claim button
+    try {
+        const messages = await interaction.channel.messages.fetch({ limit: 10 });
+        const originalMsg = messages.find(m => m.author.id === interaction.client.user.id && m.embeds.length > 0 && m.components.length > 0);
+
+        if (originalMsg) {
+            const oldEmbed = originalMsg.embeds[0];
+            const newEmbed = EmbedBuilder.from(oldEmbed);
+
+            // Update the Staff field
+            const fields = newEmbed.data.fields.map(f => {
+                if (f.name === '🛡️ Staff') {
+                    return { name: '🛡️ Staff', value: `${interaction.user}`, inline: true };
+                }
+                return f;
+            });
+            newEmbed.setFields(fields);
+            newEmbed.setColor('#00FF00'); // Green = claimed
+
+            // Disable the claim button
+            const oldRow = originalMsg.components[0];
+            const newRow = new ActionRowBuilder();
+            oldRow.components.forEach(btn => {
+                const newBtn = ButtonBuilder.from(btn);
+                if (btn.customId === 'nami_ticket_claim') {
+                    newBtn.setDisabled(true).setLabel('Pris en charge ✅');
+                }
+                newRow.addComponents(newBtn);
+            });
+
+            await originalMsg.edit({ embeds: [newEmbed], components: [newRow] });
+        }
+    } catch (err) {
+        logger.warn('[Ticket] Failed to update original message on claim:', err.message);
+    }
+
+    // 2. Send confirmation message
     const embed = new EmbedBuilder()
         .setColor('#00FF00')
         .setDescription(`✅ **${interaction.user.tag}** a pris en charge ce ticket.`);
@@ -200,7 +237,7 @@ async function claimTicket(interaction) {
     await interaction.channel.send({ embeds: [embed] });
     await interaction.reply({ content: 'Pris en charge !', ephemeral: true });
 
-    // Mettre à jour le topic
+    // 3. Update channel topic
     const oldTopic = interaction.channel.topic || '';
     interaction.channel.setTopic(`${oldTopic} | STAFF: ${interaction.user.tag}`);
 }

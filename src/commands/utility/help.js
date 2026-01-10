@@ -24,8 +24,9 @@ const CATEGORY_CONFIG = {
     'security': { emoji: '🛡️', label: 'Sécurité', description: 'Anti-raid, Quarantine, Lockdown, Whitelist' },
     'moderation': { emoji: '🔨', label: 'Modération', description: 'Ban, Kick, Mute, Warn, Mass Actions' },
     'administration': { emoji: '⚙️', label: 'Administration', description: 'Setup, Config, Backup, Restore' },
+    'tickets': { emoji: '🎫', label: 'Tickets', description: 'Gestion du support et tickets utilisateurs' },
     'logging': { emoji: '📝', label: 'Logs & Audit', description: 'Journalisation des actions et événements' },
-    'utility': { emoji: '🔧', label: 'Utilitaires', description: 'Giveaway, Poll, Outils divers' },
+    'utility': { emoji: '🔧', label: 'Utilitaires', description: 'Poll, Embed, Outils divers' },
     'information': { emoji: 'ℹ️', label: 'Information', description: 'Infos serveur, utilisateur et bot' },
     'staff': { emoji: '👮', label: 'Staff', description: 'Outils réservés aux modérateurs' },
     'system': { emoji: '💻', label: 'Système', description: 'Métriques et débogage' }

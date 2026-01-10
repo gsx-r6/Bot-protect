@@ -3,10 +3,10 @@ const embeds = require('../../utils/embeds');
 module.exports = {
     name: 'rolecount',
     description: 'Nombre de rôles sur le serveur',
-    category: 'utility',
+    category: 'information',
     aliases: ['roles', 'rolesc'],
     cooldown: 5,
-    
+
     async execute(message, args, client) {
         try {
             const roleCount = message.guild.roles.cache.size;

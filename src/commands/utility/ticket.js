@@ -6,7 +6,7 @@ const ConfigService = require('../../services/ConfigService');
 module.exports = {
     name: 'ticket',
     description: 'Publie un panel professionnel pour créer des tickets',
-    category: 'utility',
+    category: 'tickets',
     aliases: ['ticketpanel', 'tickets'],
     permissions: [PermissionFlagsBits.ManageGuild],
     cooldown: 10,
@@ -44,7 +44,7 @@ module.exports = {
                         inline: false
                     }
                 )
-                .setFooter({ 
+                .setFooter({
                     text: `${message.guild.name} • ${stats.total} tickets traités`,
                     iconURL: message.guild.iconURL({ dynamic: true })
                 })

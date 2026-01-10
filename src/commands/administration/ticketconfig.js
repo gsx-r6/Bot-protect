@@ -6,12 +6,12 @@ const ConfigService = require('../../services/ConfigService');
 module.exports = {
     name: 'ticketconfig',
     description: 'Configurer le système de tickets du serveur',
-    category: 'administration',
+    category: 'tickets',
     aliases: ['tconfig', 'ticketsetup', 'setupticket'],
     permissions: [PermissionFlagsBits.ManageGuild],
     cooldown: 5,
     usage: '<sous-commande> [valeur]',
-    
+
     async execute(message, args, client) {
         try {
             if (!message.member.permissions.has(this.permissions || [])) {
@@ -31,46 +31,46 @@ module.exports = {
                 case 'staff':
                 case 'role':
                     return this.setStaffRole(message, args, client, color);
-                
+
                 case 'category':
                 case 'categorie':
                     return this.setCategory(message, args, client, color);
-                
+
                 case 'logs':
                 case 'log':
                     return this.setLogChannel(message, args, client, color);
-                
+
                 case 'limit':
                 case 'limite':
                 case 'max':
                     return this.setMaxTickets(message, args, client, color);
-                
+
                 case 'title':
                 case 'titre':
                     return this.setPanelTitle(message, args, client, color);
-                
+
                 case 'description':
                 case 'desc':
                     return this.setPanelDescription(message, args, client, color);
-                
+
                 case 'color':
                 case 'couleur':
                     return this.setPanelColor(message, args, client, color);
-                
+
                 case 'welcome':
                 case 'message':
                     return this.setWelcomeMessage(message, args, client, color);
-                
+
                 case 'transcript':
                     return this.toggleTranscript(message, args, client, color);
-                
+
                 case 'reset':
                     return this.resetConfig(message, client, color);
-                
+
                 case 'status':
                 case 'info':
                     return this.showStatus(message, client, color, prefix);
-                
+
                 case 'help':
                 default:
                     return this.showHelp(message, client, color, prefix);
@@ -83,13 +83,13 @@ module.exports = {
 
     async setStaffRole(message, args, client, color) {
         const role = message.mentions.roles.first() || message.guild.roles.cache.get(args[1]);
-        
+
         if (!role) {
             return message.reply({ embeds: [embeds.error('Veuillez mentionner un rôle ou fournir son ID.\nExemple: `ticketconfig staff @Staff`')] });
         }
 
         db.setTicketConfig(message.guild.id, 'staff_role', role.id);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Rôle Staff configuré')
@@ -102,19 +102,19 @@ module.exports = {
 
     async setCategory(message, args, client, color) {
         const categoryId = args[1];
-        
+
         if (!categoryId) {
             return message.reply({ embeds: [embeds.error('Veuillez fournir l\'ID de la catégorie.\nExemple: `ticketconfig category 123456789`')] });
         }
 
         const category = message.guild.channels.cache.get(categoryId);
-        
+
         if (!category || category.type !== ChannelType.GuildCategory) {
             return message.reply({ embeds: [embeds.error('Catégorie introuvable ou invalide. Assurez-vous de fournir l\'ID d\'une catégorie.')] });
         }
 
         db.setTicketConfig(message.guild.id, 'category_id', category.id);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Catégorie configurée')
@@ -127,7 +127,7 @@ module.exports = {
 
     async setLogChannel(message, args, client, color) {
         const channel = message.mentions.channels.first() || message.guild.channels.cache.get(args[1]);
-        
+
         if (!channel) {
             return message.reply({ embeds: [embeds.error('Veuillez mentionner un salon ou fournir son ID.\nExemple: `ticketconfig logs #ticket-logs`')] });
         }
@@ -137,7 +137,7 @@ module.exports = {
         }
 
         db.setTicketConfig(message.guild.id, 'log_channel', channel.id);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Salon de logs configuré')
@@ -150,13 +150,13 @@ module.exports = {
 
     async setMaxTickets(message, args, client, color) {
         const limit = parseInt(args[1]);
-        
+
         if (isNaN(limit) || limit < 1 || limit > 10) {
             return message.reply({ embeds: [embeds.error('Veuillez fournir un nombre entre 1 et 10.\nExemple: `ticketconfig limit 2`')] });
         }
 
         db.setTicketConfig(message.guild.id, 'max_tickets', limit);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Limite de tickets configurée')
@@ -169,13 +169,13 @@ module.exports = {
 
     async setPanelTitle(message, args, client, color) {
         const title = args.slice(1).join(' ');
-        
+
         if (!title || title.length > 100) {
             return message.reply({ embeds: [embeds.error('Veuillez fournir un titre (max 100 caractères).\nExemple: `ticketconfig title Support Technique`')] });
         }
 
         db.setTicketConfig(message.guild.id, 'panel_title', title);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Titre du panel configuré')
@@ -188,13 +188,13 @@ module.exports = {
 
     async setPanelDescription(message, args, client, color) {
         const description = args.slice(1).join(' ');
-        
+
         if (!description || description.length > 500) {
             return message.reply({ embeds: [embeds.error('Veuillez fournir une description (max 500 caractères).\nExemple: `ticketconfig description Cliquez pour contacter le support`')] });
         }
 
         db.setTicketConfig(message.guild.id, 'panel_description', description);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Description du panel configurée')
@@ -207,13 +207,13 @@ module.exports = {
 
     async setPanelColor(message, args, client, color) {
         const newColor = args[1];
-        
+
         if (!newColor || !/^#[0-9A-Fa-f]{6}$/.test(newColor)) {
             return message.reply({ embeds: [embeds.error('Veuillez fournir une couleur HEX valide.\nExemple: `ticketconfig color #5865F2`')] });
         }
 
         db.setTicketConfig(message.guild.id, 'panel_color', newColor);
-        
+
         const embed = new EmbedBuilder()
             .setColor(newColor)
             .setTitle('✅ Couleur du panel configurée')
@@ -226,18 +226,18 @@ module.exports = {
 
     async setWelcomeMessage(message, args, client, color) {
         const welcomeMsg = args.slice(1).join(' ');
-        
+
         if (!welcomeMsg || welcomeMsg.length > 1000) {
             return message.reply({ embeds: [embeds.error('Veuillez fournir un message de bienvenue (max 1000 caractères).\nVariables: `{user}` (mention), `{username}` (nom), `{server}` (serveur)\nExemple: `ticketconfig message Bienvenue {user} ! Comment pouvons-nous vous aider ?`')] });
         }
 
         db.setTicketConfig(message.guild.id, 'welcome_message', welcomeMsg);
-        
+
         const preview = welcomeMsg
             .replace(/{user}/g, message.author.toString())
             .replace(/{username}/g, message.author.username)
             .replace(/{server}/g, message.guild.name);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Message de bienvenue configuré')
@@ -254,7 +254,7 @@ module.exports = {
         const newState = currentState ? 0 : 1;
 
         db.setTicketConfig(message.guild.id, 'transcript_enabled', newState);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('✅ Transcripts configurés')
@@ -267,7 +267,7 @@ module.exports = {
 
     async resetConfig(message, client, color) {
         db.resetTicketConfig(message.guild.id);
-        
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('🔄 Configuration réinitialisée')
@@ -281,7 +281,7 @@ module.exports = {
     async showStatus(message, client, color, prefix) {
         const config = db.getTicketConfig(message.guild.id) || {};
         const stats = db.getTicketStats(message.guild.id);
-        
+
         const staffRole = config.staff_role ? `<@&${config.staff_role}>` : '❌ Non configuré';
         const category = config.category_id ? message.guild.channels.cache.get(config.category_id)?.name || '❌ Catégorie supprimée' : '❌ Non configuré';
         const logChannel = config.log_channel ? `<#${config.log_channel}>` : '❌ Non configuré';

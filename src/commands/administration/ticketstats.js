@@ -5,7 +5,7 @@ const ConfigService = require('../../services/ConfigService');
 module.exports = {
     name: 'ticketstats',
     description: 'Afficher les statistiques détaillées des tickets',
-    category: 'administration',
+    category: 'tickets',
     aliases: ['tstats', 'ticketstatistics'],
     permissions: [PermissionFlagsBits.ManageGuild],
     cooldown: 5,
