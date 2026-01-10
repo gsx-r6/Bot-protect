@@ -1,5 +1,6 @@
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const embeds = require('../../utils/embeds');
+const PermissionHandler = require('../../utils/PermissionHandler');
 
 module.exports = {
     name: 'massban',
@@ -43,8 +44,9 @@ module.exports = {
                         continue;
                     }
 
-                    if (member.roles.highest.position >= message.member.roles.highest.position) {
-                        errors.push(`${member.user.tag}: Rôle supérieur ou égal`);
+                    // Vérification de la Hiérarchie (PermissionHandler)
+                    if (!PermissionHandler.checkHierarchy(message.member, member)) {
+                        errors.push(`${member.user.tag}: Hiérarchie insuffisante`);
                         failed++;
                         continue;
                     }

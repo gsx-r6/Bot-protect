@@ -1,5 +1,6 @@
 const { PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const embeds = require('../../utils/embeds');
+const PermissionHandler = require('../../utils/PermissionHandler');
 
 module.exports = {
     name: 'quarantine',
@@ -26,8 +27,9 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Vous ne pouvez pas vous mettre en quarantaine')] });
             }
 
-            if (member.roles.highest.position >= message.member.roles.highest.position) {
-                return message.reply({ embeds: [embeds.error('Vous ne pouvez pas mettre en quarantaine ce membre (rôle supérieur ou égal)')] });
+            // Vérification de la Hiérarchie (PermissionHandler)
+            if (!PermissionHandler.checkHierarchy(message.member, member)) {
+                return message.reply({ embeds: [embeds.error('Vous ne pouvez pas mettre en quarantaine ce membre (hiérarchie insuffisante).')] });
             }
 
             const reason = args.slice(1).join(' ') || 'Aucune raison fournie';

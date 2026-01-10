@@ -1,6 +1,6 @@
 const embeds = require('../../utils/embeds');
 const { PermissionsBitField } = require('discord.js');
-const permHandler = require('../../handlers/permissionHandler');
+const PermissionHandler = require('../../utils/PermissionHandler');
 
 module.exports = {
     name: 'timeout',
@@ -17,6 +17,12 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Vous n\'avez pas la permission de timeout des membres.')] });
             }
 
+            // Vérification du Rate Limit
+            if (!PermissionHandler.checkRateLimit(message.member, 'mute')) { // Timeout = Mute limit
+                const remaining = PermissionHandler.getRemainingUses(message.member, 'mute');
+                return message.reply({ embeds: [embeds.error(`Vous avez atteint votre limite de timeouts pour cette heure.\nRestant: ${remaining}`)] });
+            }
+
             let targetUser = message.mentions.users.first();
             if (!targetUser && args[0]) {
                 try {
@@ -29,9 +35,13 @@ module.exports = {
             const target = await message.guild.members.fetch(targetUser.id).catch(() => null);
             if (!target) return message.reply({ embeds: [embeds.error('Ce membre n\'est pas sur le serveur.')] });
 
-            const permCheck = permHandler.canModerate(message.member, target, message.guild);
-            if (!permCheck.allowed) {
-                return message.reply({ embeds: [embeds.error(permCheck.reason)] });
+            // Vérification de la Hiérarchie
+            if (!PermissionHandler.checkHierarchy(message.member, target)) {
+                return message.reply({ embeds: [embeds.error('Vous ne pouvez pas sanctionner ce membre car il est supérieur ou égal à vous dans la hiérarchie du bot.')] });
+            }
+
+            if (!target.moderatable) {
+                return message.reply({ embeds: [embeds.error('Je ne peux pas rendre muet ce membre.')] });
             }
 
             const duration = args[1];

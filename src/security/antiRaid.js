@@ -1,3 +1,4 @@
+const Response = require('../utils/Response');
 const logger = require('../utils/logger');
 const db = require('../database/database');
 const { EmbedBuilder } = require('discord.js');
@@ -10,10 +11,26 @@ class AntiRaid {
         this.cleanupInterval = null;
     }
 
-    init() {
+    async init() {
         this.client.on('guildMemberAdd', (member) => this.onJoin(member));
         this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
-        logger.info('AntiRaid initialized with enforcement enabled');
+
+        // Restore Raid State from DB
+        const guilds = this.client.guilds.cache.map(g => g.id);
+        for (const guildId of guilds) {
+            const state = db.getRaidState(guildId);
+            if (state && state.is_active) {
+                const guild = this.client.guilds.cache.get(guildId);
+                if (guild) {
+                    logger.warn(`[AntiRaid] Restoring active RAID MODE for ${guild.name}`);
+                    this.raidMode.set(guildId, true);
+                    // Deactivate after remaining time (assuming 5 min default window, this is simple recovery)
+                    setTimeout(() => this.deactivateRaidMode(guild), 5 * 60 * 1000);
+                }
+            }
+        }
+
+        logger.info('AntiRaid initialized with enforcement enabled and state stability');
     }
 
     async onJoin(member) {
@@ -21,15 +38,16 @@ class AntiRaid {
         const guildId = guild.id;
         const now = Date.now();
 
-        const config = db.getAutomodConfig(guildId);
-        if (!config || !config.antijoinraid) return;
+        const config = db.getAutomodConfig(guildId) || {};
+        if (!config.antijoinraid) return;
 
         if (!this.joins.has(guildId)) this.joins.set(guildId, []);
         const arr = this.joins.get(guildId);
         arr.push({ time: now, memberId: member.id });
 
-        const timeframe = parseInt(process.env.ANTIRAID_TIMEFRAME || '10000', 10);
-        const threshold = parseInt(process.env.ANTIRAID_THRESHOLD || '10', 10);
+        // Dynamic Configuration
+        const timeframe = config.antiraid_timeframe || 10000;
+        const threshold = config.antiraid_threshold || 10;
 
         while (arr.length && now - arr[0].time > timeframe) arr.shift();
 
@@ -48,7 +66,15 @@ class AntiRaid {
         if (this.raidMode.get(guildId)) return;
 
         this.raidMode.set(guildId, true);
+        db.setRaidState(guildId, true, recentJoins.map(j => j.memberId)); // PERSISTENCE
+
         logger.warn(`[AntiRaid] RAID DETECTED in ${guild.name}! ${recentJoins.length} joins`);
+
+        // DM Owner
+        try {
+            const owner = await guild.fetchOwner();
+            owner.send({ embeds: [Response.error(`🚨 **ALERTE SÉCURITÉ** : Raid détecté sur ${guild.name} ! Mode protection activé.`)] }).catch(() => { });
+        } catch (e) { }
 
         for (const join of recentJoins) {
             try {
@@ -56,45 +82,65 @@ class AntiRaid {
                 if (member) {
                     await this.handleRaidMember(member);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         const logChannels = db.getLoggerChannels(guildId);
         if (logChannels?.automod_log) {
             const logChannel = guild.channels.cache.get(logChannels.automod_log);
             if (logChannel) {
-                const embed = new EmbedBuilder()
-                    .setColor('#FF0000')
-                    .setTitle('🚨 RAID DÉTECTÉ!')
-                    .setDescription(`Mode raid activé automatiquement`)
+                const embed = Response.error('🚨 RAID DÉTECTÉ!\nMode raid activé automatiquement')
                     .addFields(
                         { name: '📊 Joins détectés', value: `${recentJoins.length}`, inline: true },
-                        { name: '⏱️ Fenêtre', value: `${process.env.ANTIRAID_TIMEFRAME || '10000'}ms`, inline: true },
+                        { name: '⏱️ Fenêtre', value: `${db.getAutomodConfig(guildId)?.antiraid_timeframe || 10000}ms`, inline: true },
                         { name: '🛡️ Action', value: 'Nouveaux membres mis en quarantaine', inline: true }
-                    )
-                    .setTimestamp();
+                    );
 
                 await logChannel.send({ embeds: [embed] });
             }
         }
 
         setTimeout(() => {
-            this.raidMode.set(guildId, false);
-            logger.info(`[AntiRaid] Raid mode deactivated for ${guild.name}`);
+            this.deactivateRaidMode(guild);
         }, 5 * 60 * 1000);
+    }
+
+    async deactivateRaidMode(guild) {
+        if (!this.raidMode.get(guild.id)) return;
+
+        this.raidMode.set(guild.id, false);
+        db.setRaidState(guild.id, false); // PERSISTENCE UPDATE
+        logger.info(`[AntiRaid] Raid mode deactivated for ${guild.name}`);
     }
 
     async handleRaidMember(member) {
         try {
             const guild = member.guild;
+            const guildConfig = db.getGuildConfig(guild.id);
+            let quarantineRole = null;
 
-            let quarantineRole = guild.roles.cache.find(r => r.name === '🔒 Quarantine');
+            // 1. Try Configured ID
+            if (guildConfig && guildConfig.quarantine_role_id) {
+                quarantineRole = guild.roles.cache.get(guildConfig.quarantine_role_id);
+            }
+
+            // 2. Fallback: Find by Name
+            if (!quarantineRole) {
+                quarantineRole = guild.roles.cache.find(r => r.name === '🔒 Quarantine');
+
+                // If found by name but ID was missing or wrong, update DB
+                if (quarantineRole) {
+                    db.setGuildConfig(guild.id, 'quarantine_role_id', quarantineRole.id);
+                }
+            }
+
+            // 3. Last Resort: Create Role
             if (!quarantineRole) {
                 quarantineRole = await guild.roles.create({
                     name: '🔒 Quarantine',
                     color: '#FF0000',
                     permissions: [],
-                    reason: 'Auto-created for anti-raid'
+                    reason: 'Création automatique pour Anti-Raid'
                 });
 
                 for (const channel of guild.channels.cache.values()) {
@@ -103,25 +149,26 @@ class AntiRaid {
                             ViewChannel: false,
                             SendMessages: false,
                             Connect: false
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                 }
+
+                // Save New Role ID
+                db.setGuildConfig(guild.id, 'quarantine_role_id', quarantineRole.id);
             }
 
-            await member.roles.add(quarantineRole, 'Anti-Raid: Suspicious join during raid');
+            await member.roles.add(quarantineRole, 'Anti-Raid : Connexion suspecte pendant un raid');
             logger.info(`[AntiRaid] ${member.user.tag} quarantined`);
 
             try {
-                const dmEmbed = new EmbedBuilder()
-                    .setColor('#FFA500')
-                    .setTitle('🔒 Vérification requise')
+                const dmEmbed = Response.warning('🔒 Vérification requise')
                     .setDescription(`Vous avez été mis en attente sur **${guild.name}** pour vérification.`)
                     .addFields(
                         { name: '📝 Raison', value: 'Activité suspecte détectée' },
                         { name: '✅ Que faire ?', value: 'Attendez qu\'un modérateur vous vérifie.' }
                     );
                 await member.send({ embeds: [dmEmbed] });
-            } catch (e) {}
+            } catch (e) { }
 
         } catch (err) {
             logger.error('[AntiRaid] Failed to quarantine member:', err.message);

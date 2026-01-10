@@ -3,13 +3,24 @@ const {
     ActionRowBuilder,
     StringSelectMenuBuilder,
     StringSelectMenuOptionBuilder,
-    ComponentType,
-    ButtonBuilder,
-    ButtonStyle
+    ComponentType
 } = require('discord.js');
 const ConfigService = require('../../services/ConfigService');
 
+// Mapper pour afficher les permissions de manière lisible
+const permissionLabels = {
+    'BanMembers': '🔨 Bannir des Membres',
+    'KickMembers': '👢 Expulser des Membres',
+    'ModerateMembers': '🔇 Modérer les Membres',
+    'ManageMessages': '🗑️ Gérer les Messages',
+    'ManageGuild': '⚙️ Gérer le Serveur',
+    'ManageChannels': '📁 Gérer les Salons',
+    'ManageRoles': '🎭 Gérer les Rôles',
+    'Administrator': '👑 Administrateur'
+};
+
 const CATEGORY_CONFIG = {
+    'owner': { emoji: '👑', label: 'Propriétaire', description: 'Commandes réservées au propriétaire du bot' },
     'security': { emoji: '🛡️', label: 'Sécurité', description: 'Anti-raid, Quarantine, Lockdown, Whitelist' },
     'moderation': { emoji: '🔨', label: 'Modération', description: 'Ban, Kick, Mute, Warn, Mass Actions' },
     'administration': { emoji: '⚙️', label: 'Administration', description: 'Setup, Config, Backup, Restore' },
@@ -171,7 +182,11 @@ module.exports = {
             .setFooter({ text: 'Syntaxe: <requis> [optionnel]' });
 
         if (cmd.permissions) {
-            embed.addFields({ name: '🔒 Permissions', value: `\`${cmd.permissions.join(', ')}\``, inline: false });
+            const humanPerms = cmd.permissions.map(p => {
+                const key = typeof p === 'string' ? p : p.toString().replace(/n$/, '');
+                return permissionLabels[key] || key;
+            }).join(', ');
+            embed.addFields({ name: '🔒 Permissions', value: humanPerms, inline: false });
         }
 
         return message.reply({ embeds: [embed] });
@@ -186,7 +201,7 @@ module.exports = {
         if (d > 0) parts.push(`${d}j`);
         if (h > 0) parts.push(`${h}h`);
         if (m > 0) parts.push(`${m}m`);
-        if (parts.length === 0) return 'Just started';
+        if (parts.length === 0) return 'À l\'instant';
 
         return parts.join(' ');
     }

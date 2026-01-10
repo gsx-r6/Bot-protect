@@ -1,6 +1,7 @@
 const embeds = require('../../utils/embeds');
 const { PermissionsBitField } = require('discord.js');
 const db = require('../../database/database');
+const PermissionHandler = require('../../utils/PermissionHandler');
 
 module.exports = {
     name: 'warn',
@@ -17,6 +18,10 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Vous n\'avez pas la permission de gérer les avertissements.')] });
             }
 
+            // Vérification du Rate Limit
+            // Warn n'a pas de limite explicite dans la config par défaut, mais on pourrait en ajouter une. 
+            // Pour l'instant on check juste la hiérarchie.
+
             let targetUser = message.mentions.users.first();
             if (!targetUser && args[0]) {
                 try {
@@ -28,6 +33,11 @@ module.exports = {
 
             const target = await message.guild.members.fetch(targetUser.id).catch(() => null);
             if (!target) return message.reply({ embeds: [embeds.error('Ce membre n\'est pas sur le serveur.')] });
+
+            // Vérification de la Hiérarchie
+            if (!PermissionHandler.checkHierarchy(message.member, target)) {
+                return message.reply({ embeds: [embeds.error('Vous ne pouvez pas avertir ce membre car il est supérieur ou égal à vous dans la hiérarchie.')] });
+            }
 
             if (target.id === message.author.id) {
                 return message.reply({ embeds: [embeds.error('Vous ne pouvez pas vous avertir vous-même.')] });

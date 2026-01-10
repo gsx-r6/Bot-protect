@@ -34,25 +34,60 @@ class AntiSpam {
         arr.push(now);
 
         const timeframe = parseInt(process.env.ANTISPAM_TIMEFRAME || '5000', 10);
-        const threshold = parseInt(process.env.ANTISPAM_MESSAGE_THRESHOLD || '5', 10);
+        const threshold = config.antispam_threshold || 5;
 
         while (arr.length && now - arr[0] > timeframe) arr.shift();
 
         if (arr.length >= threshold) {
-            await this.enforceAction(msg, arr.length, timeframe);
+            await this.enforceAction(msg, arr.length, timeframe, config.antispam_action || 'mute');
             this.messageMap.set(key, []);
         }
     }
 
-    async enforceAction(msg, messageCount, timeframe) {
+    async enforceAction(msg, messageCount, timeframe, action) {
         const member = msg.member;
         const guild = msg.guild;
 
         try {
-            const timeoutDuration = 5 * 60 * 1000;
-            await member.timeout(timeoutDuration, `Anti-Spam: ${messageCount} messages in ${timeframe}ms`);
+            logger.warn(`[AntiSpam] ${msg.author.tag} triggered limit (${messageCount} msgs) - Action: ${action}`);
 
-            logger.warn(`[AntiSpam] ${msg.author.tag} timed out for spamming in ${guild.name}`);
+            let actionText = '';
+
+            switch (action.toLowerCase()) {
+                case 'warn':
+                    db.addWarning(guild.id, member.id, this.client.user.id, `Anti-Spam: ${messageCount} messages in ${timeframe}ms`);
+                    actionText = 'Avertissement';
+                    break;
+
+                case 'kick':
+                    if (member.kickable) {
+                        await member.kick(`Anti-Spam: ${messageCount} messages in ${timeframe}ms`);
+                        actionText = 'Expulsion';
+                    } else {
+                        actionText = 'Expulsion (Echec - Permissions)';
+                    }
+                    break;
+
+                case 'ban':
+                    if (member.bannable) {
+                        await member.ban({ reason: `Anti-Spam: ${messageCount} messages in ${timeframe}ms` });
+                        actionText = 'Bannissement';
+                    } else {
+                        actionText = 'Ban (Echec - Permissions)';
+                    }
+                    break;
+
+                case 'mute':
+                default:
+                    const timeoutDuration = 5 * 60 * 1000;
+                    if (member.moderatable) {
+                        await member.timeout(timeoutDuration, `Anti-Spam: ${messageCount} messages in ${timeframe}ms`);
+                        actionText = 'Mute (5 min)';
+                    } else {
+                        actionText = 'Mute (Echec - Permissions)';
+                    }
+                    break;
+            }
 
             const logChannels = db.getLoggerChannels(guild.id);
             if (logChannels?.automod_log) {
@@ -61,11 +96,11 @@ class AntiSpam {
                     const embed = new EmbedBuilder()
                         .setColor('#FF6600')
                         .setTitle('🚫 Anti-Spam Triggered')
-                        .setDescription(`${member} a été mute automatiquement pour spam`)
+                        .setDescription(`${member} a déclenché l'anti-spam.`)
                         .addFields(
                             { name: '👤 Utilisateur', value: `${msg.author.tag} (${msg.author.id})`, inline: true },
                             { name: '📊 Messages', value: `${messageCount} en ${timeframe}ms`, inline: true },
-                            { name: '⏱️ Durée mute', value: '5 minutes', inline: true },
+                            { name: '🛠️ Action', value: actionText, inline: true },
                             { name: '📍 Salon', value: `${msg.channel}`, inline: true }
                         )
                         .setThumbnail(msg.author.displayAvatarURL())
@@ -78,17 +113,16 @@ class AntiSpam {
             try {
                 const dmEmbed = new EmbedBuilder()
                     .setColor('#FF6600')
-                    .setTitle('🚫 Vous avez été mute')
-                    .setDescription(`Vous avez été temporairement mute sur **${guild.name}** pour spam.`)
+                    .setTitle(`🚫 Anti-Spam: ${actionText}`)
+                    .setDescription(`Vous avez déclenché l'anti-spam sur **${guild.name}**.\nAction: **${actionText}**`)
                     .addFields(
-                        { name: '⏱️ Durée', value: '5 minutes' },
                         { name: '📝 Raison', value: `${messageCount} messages envoyés trop rapidement` }
                     );
                 await msg.author.send({ embeds: [dmEmbed] });
-            } catch (e) {}
+            } catch (e) { }
 
         } catch (err) {
-            logger.error('[AntiSpam] Failed to timeout user:', err.message);
+            logger.error('[AntiSpam] Failed to enforce action:', err.message);
         }
     }
 

@@ -4,69 +4,74 @@ const SecurityAudit = require('../security/securityAudit');
 const logger = require('../utils/logger');
 const path = require('path');
 
-// Forcer la timezone française si non définie
+// Force French timezone if not defined
 process.env.TZ = process.env.TZ || 'Europe/Paris';
 
 logger.info('🚀 {+} UHQ MONDE - STARTING');
-
 
 (async () => {
     try {
         loadEnvironment();
 
-        // Test du système de logs
-        logger.info('🔍 Test du système de logs...');
-        logger.success('✅ Log SUCCESS fonctionne !');
-        logger.warn('⚠️ Log WARN fonctionne !');
-        logger.error('❌ Log ERROR fonctionne !');
-        logger.debug('🔍 Log DEBUG fonctionne (uniquement si LOG_LEVEL=debug)');
-        logger.command('/test commande');
+        // Note: envLoader handles critical variable validation (TOKEN, OWNER_ID)
 
-        logger.info(`📁 Logs enregistrés dans : ${path.join(process.cwd(), 'data', 'logs')}`);
-        logger.info(`📊 Taille des logs : ${logger.getLogsSize()} MB`);
+        // Test logging system
+        logger.debug('Validation du logger...');
+        if (process.env.NODE_ENV === 'development') {
+            logger.debug('🔍 Debug mode activé');
+        }
 
+        logger.info(`📁 Logs path: ${path.join(process.cwd(), 'data', 'logs')}`);
+
+        // Security Audit
         if (process.env.SECURITY_AUDIT_ON_START === 'true') {
-            logger.info('Lancement de l\'audit de sécurité...');
+            logger.info('🛡️ Lancement de l\'audit de sécurité...');
             const audit = new SecurityAudit();
             const result = await audit.runFullAudit();
             if (!result.safe && process.env.SECURITY_BLOCK_ON_VULNERABILITIES === 'true') {
-                logger.error('Démarrage bloqué en raison de vulnérabilités');
+                logger.error('🛑 Démarrage bloqué par sécurité (Vulnérabilités détectées)');
                 process.exit(1);
             }
         }
 
+        // Initialize Client
         const client = new NamiClient();
         await client.start();
 
     } catch (error) {
-        logger.error('Erreur fatale au démarrage:', error);
-        process.exit(1);
+        logger.error('❌ Erreur fatale au démarrage:', error);
+        setTimeout(() => process.exit(1), 1000); // Allow logs to flush
     }
 })();
 
+// Graceful Shutdown Handlers
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+    logger.error('❌ Unhandled Rejection:', reason);
+    // Do not exit on unhandled rejection to keep bot alive, but log strictly
 });
 
 process.on('uncaughtException', (err) => {
     logger.error('❌ Uncaught Exception:', err);
     logger.error('Stack:', err.stack);
 
-    // Graceful shutdown après exception critique
-    logger.error('⚠️ Arrêt du bot dans 3 secondes pour éviter un état instable...');
+    // Recovery attempt or graceful shutdown
+    logger.warn('⚠️ Critical error caught. Attempting safe shutdown...');
     setTimeout(() => {
-        logger.error('🛑 Arrêt forcé du bot après exception critique');
         process.exit(1);
-    }, 3000);
+    }, 1000);
 });
 
-process.on('SIGINT', () => {
-    logger.info('🛑 Arrêt du bot (SIGINT)...');
-    process.exit(0);
-});
+async function gracefulShutdown(signal) {
+    logger.info(`🛑 Arrêt du bot (${signal})...`);
+    // Add any cleanup logic here (DB closing, etc. if needed)
 
-process.on('SIGTERM', () => {
-    logger.info('🛑 Arrêt du bot (SIGTERM)...');
-    process.exit(0);
-});
+    // Give time for logs to write to disk
+    logger.info('👋 Au revoir !');
+    setTimeout(() => {
+        process.exit(0);
+    }, 1000);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 

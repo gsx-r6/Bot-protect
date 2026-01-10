@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const Response = require('./Response');
 
 const ERROR_TYPES = {
     MISSING_PERMISSIONS: 'MISSING_PERMISSIONS',
@@ -36,90 +37,87 @@ const PERMISSION_NAMES = {
 
 class ErrorHandler {
     static createErrorEmbed(type, options = {}) {
-        const embed = new EmbedBuilder()
-            .setColor('#FF0000')
-            .setTimestamp()
-            .setFooter({ text: 'Nami Protect ⚡' })
+        let title = 'Erreur';
+        let description = 'Une erreur inconnue est survenue.';
+        let fields = [];
 
         switch (type) {
             case ERROR_TYPES.MISSING_PERMISSIONS:
-                embed.setTitle('❌ Permissions manquantes')
-                    .setDescription(`Vous n'avez pas les permissions requises pour utiliser cette commande.`)
-                    .addFields(
-                        { name: 'Permissions requises', value: options.permissions?.map(p => `• ${PERMISSION_NAMES[p] || p}`).join('\n') || 'Non spécifiée' }
-                    );
+                title = 'Permissions manquantes';
+                description = `Vous n'avez pas les permissions requises pour utiliser cette commande.`;
+                fields.push({ name: 'Permissions requises', value: options.permissions?.map(p => `• ${PERMISSION_NAMES[p] || p}`).join('\n') || 'Non spécifiée' });
                 break;
 
             case ERROR_TYPES.BOT_MISSING_PERMISSIONS:
-                embed.setTitle('❌ Permissions du bot insuffisantes')
-                    .setDescription(`Je n'ai pas les permissions nécessaires pour exécuter cette commande.`)
-                    .addFields(
-                        { name: 'Permissions requises', value: options.permissions?.map(p => `• ${PERMISSION_NAMES[p] || p}`).join('\n') || 'Non spécifiée' }
-                    );
+                title = 'Permissions du bot insuffisantes';
+                description = `Je n'ai pas les permissions nécessaires pour exécuter cette commande.`;
+                fields.push({ name: 'Permissions requises', value: options.permissions?.map(p => `• ${PERMISSION_NAMES[p] || p}`).join('\n') || 'Non spécifiée' });
                 break;
 
             case ERROR_TYPES.MISSING_ARGUMENTS:
-                embed.setTitle('❌ Arguments manquants')
-                    .setDescription(`Cette commande nécessite des arguments.`)
-                    .addFields(
-                        { name: '📖 Utilisation', value: `\`${options.usage}\`` },
-                        { name: 'ℹ️ Description', value: options.description || 'Non disponible' }
-                    )
-                    .setThumbnail('https://cdn-icons-png.flaticon.com/512/3588/3588478.png');
+                title = 'Arguments manquants';
+                description = `Cette commande nécessite des arguments.`;
+                fields.push(
+                    { name: '📖 Utilisation', value: `\`${options.usage}\`` },
+                    { name: 'ℹ️ Description', value: options.description || 'Non disponible' }
+                );
                 break;
 
             case ERROR_TYPES.INVALID_ARGUMENT:
-                embed.setTitle('❌ Argument invalide')
-                    .setDescription(`L'argument fourni est invalide.`)
-                    .addFields(
-                        { name: '📝 Détails', value: options.details || 'Vérifiez votre syntaxe' },
-                        { name: '📖 Utilisation', value: `\`${options.usage}\`` }
-                    );
+                title = 'Argument invalide';
+                description = `L'argument fourni est invalide.`;
+                fields.push(
+                    { name: '📝 Détails', value: options.details || 'Vérifiez votre syntaxe' },
+                    { name: '📖 Utilisation', value: `\`${options.usage}\`` }
+                );
                 break;
 
             case ERROR_TYPES.COOLDOWN:
-                embed.setTitle('⏱️ Commande en cooldown')
-                    .setDescription(`Attendez avant de réutiliser cette commande.`)
-                    .addFields(
-                        { name: '⏳ Temps d\'attente', value: `${options.cooldownTime}s` }
-                    );
+                title = 'Commande en cooldown';
+                description = `Attendez avant de réutiliser cette commande.`;
+                fields.push({ name: '⏳ Temps d\'attente', value: `${options.cooldownTime}s` });
                 break;
 
             case ERROR_TYPES.INVALID_USAGE:
-                embed.setTitle('❌ Utilisation incorrecte')
-                    .setDescription(`La commande n'a pas été utilisée correctement.`)
-                    .addFields(
-                        { name: '📖 Utilisation correcte', value: `\`${options.usage}\`` },
-                        { name: 'ℹ️ Description', value: options.description || 'Non disponible' },
-                        { name: '📚 Exemple(s)', value: options.examples || 'Consultez l\'aide' }
-                    )
-                    .setThumbnail('https://cdn-icons-png.flaticon.com/512/3588/3588478.png');
+                title = 'Utilisation incorrecte';
+                description = `La commande n'a pas été utilisée correctement.`;
+                fields.push(
+                    { name: '📖 Utilisation correcte', value: `\`${options.usage}\`` },
+                    { name: 'ℹ️ Description', value: options.description || 'Non disponible' }
+                );
+                if (options.examples) fields.push({ name: '📚 Exemple(s)', value: options.examples || 'Consultez l\'aide' });
                 break;
 
             case ERROR_TYPES.COMMAND_ERROR:
-                embed.setTitle('❌ Erreur lors de l\'exécution')
-                    .setDescription(`Une erreur est survenue lors de l\'exécution de la commande.`)
-                    .addFields(
-                        { name: '🔍 Détails', value: options.message || 'Erreur inconnue' }
-                    );
+                title = 'Erreur lors de l\'exécution';
+                description = `Une erreur interne est survenue.`;
+                fields.push({ name: '🔍 Détails', value: options.message || 'Erreur inconnue' });
                 if (process.env.NODE_ENV === 'development') {
-                    embed.addFields({ name: '🐛 Stack (Dev)', value: `\`\`\`${options.stack?.slice(0, 500) || 'N/A'}\`\`\`` });
+                    fields.push({ name: '🐛 Stack (Dev)', value: `\`\`\`${options.stack?.slice(0, 500) || 'N/A'}\`\`\`` });
                 }
                 break;
 
             case ERROR_TYPES.USER_ERROR:
-                embed.setTitle('❌ Erreur')
-                    .setDescription(options.message || 'Une erreur est survenue.');
+                title = 'Action impossible';
+                description = options.message || 'Une erreur est survenue.';
                 break;
 
             case ERROR_TYPES.NOT_FOUND:
-                embed.setTitle('❌ Non trouvé')
-                    .setDescription(options.message || 'La ressource demandée n\'existe pas.');
+                title = 'Non trouvé';
+                description = options.message || 'La ressource demandée n\'existe pas.';
                 break;
+        }
 
-            default:
-                embed.setTitle('❌ Erreur')
-                    .setDescription('Une erreur inconnue est survenue.');
+        // Use the new standard Response style mostly, but keep specific fields logic
+        const embed = new EmbedBuilder()
+            .setColor(Response.colors.ERROR) // Use global error color
+            .setTitle(`❌ ${title}`)
+            .setDescription(description)
+            .setFooter({ text: 'Nami Protect ⚡' })
+            .setTimestamp();
+
+        if (fields.length > 0) {
+            embed.addFields(fields);
         }
 
         return embed;
@@ -147,14 +145,12 @@ class ErrorHandler {
             type: null
         };
 
-        // Vérifier si la commande existe
         if (!command) {
             result.valid = false;
             result.type = ERROR_TYPES.NOT_FOUND;
             return result;
         }
 
-        // Vérifier les permissions de l'utilisateur
         if (command.permissions && command.permissions.length > 0) {
             if (!message.member.permissions.has(command.permissions)) {
                 result.valid = false;
@@ -164,7 +160,6 @@ class ErrorHandler {
             }
         }
 
-        // Vérifier les permissions du bot
         if (command.botPermissions && command.botPermissions.length > 0) {
             if (!message.guild.members.me.permissions.has(command.botPermissions)) {
                 result.valid = false;
@@ -180,18 +175,16 @@ class ErrorHandler {
     static createHelpEmbed(command) {
         if (!command) return null;
 
+        // Use standard Premium/Info color for help
         const embed = new EmbedBuilder()
-            .setColor('#0099FF')
+            .setColor(Response.colors.INFO)
             .setTitle(`📖 Aide - ${command.name.toUpperCase()}`)
             .setDescription(command.description || 'Aucune description')
             .setFooter({ text: 'Nami Protect ⚡' })
             .setTimestamp();
 
         if (command.usage) {
-            embed.addFields({
-                name: '📝 Utilisation',
-                value: `\`${command.usage}\``
-            });
+            embed.addFields({ name: '📝 Utilisation', value: `\`${command.usage}\`` });
         }
 
         if (command.examples) {
@@ -211,10 +204,7 @@ class ErrorHandler {
         }
 
         if (command.cooldown) {
-            embed.addFields({
-                name: '⏱️ Cooldown',
-                value: `${command.cooldown}s`
-            });
+            embed.addFields({ name: '⏱️ Cooldown', value: `${command.cooldown}s` });
         }
 
         return embed;
