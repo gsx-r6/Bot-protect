@@ -4,7 +4,6 @@ const commandHandler = require('../handlers/commandHandler');
 const eventHandler = require('../handlers/eventHandler');
 const logger = require('../utils/logger');
 const LogService = require('../services/LogService');
-const LogService = require('../services/LogService');
 
 class NamiClient extends Client {
     constructor() {
