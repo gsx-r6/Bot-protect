@@ -277,6 +277,26 @@ class DB {
         }
     }
 
+    // Permission levels
+    getPermissionLevels(guildId) {
+        return this.db.prepare('SELECT * FROM permission_levels WHERE guild_id = ?').all(guildId);
+    }
+
+    addPermissionLevel(guildId, level, roleId) {
+        this.db.prepare('INSERT OR REPLACE INTO permission_levels (guild_id, level, role_id) VALUES (?, ?, ?)')
+            .run(guildId, level, roleId);
+    }
+
+    removePermissionLevel(guildId, level, roleId) {
+        this.db.prepare('DELETE FROM permission_levels WHERE guild_id = ? AND level = ? AND role_id = ?')
+            .run(guildId, level, roleId);
+    }
+
+    clearPermissionLevel(guildId, level) {
+        this.db.prepare('DELETE FROM permission_levels WHERE guild_id = ? AND level = ?')
+            .run(guildId, level);
+    }
+
     deleteRankPermission(guildId, roleId) {
         this.db.prepare('DELETE FROM rank_permissions WHERE guild_id = ? AND role_id = ?').run(guildId, roleId);
     }

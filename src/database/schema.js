@@ -118,6 +118,12 @@ module.exports = {
         updated_at TEXT,
         UNIQUE(guild_id, role_id)
     )`,
+    permission_levels: `CREATE TABLE IF NOT EXISTS permission_levels (
+        guild_id TEXT,
+        level INTEGER,
+        role_id TEXT,
+        PRIMARY KEY (guild_id, level, role_id)
+    )`,
 
     role_blacklist: `CREATE TABLE IF NOT EXISTS role_blacklist (
         guild_id TEXT,
