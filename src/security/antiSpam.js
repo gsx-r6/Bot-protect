@@ -33,7 +33,7 @@ class AntiSpam {
         const arr = this.messageMap.get(key);
         arr.push(now);
 
-        const timeframe = parseInt(process.env.ANTISPAM_TIMEFRAME || '5000', 10);
+        const timeframe = config.antispam_timeframe || parseInt(process.env.ANTISPAM_TIMEFRAME || '5000', 10);
         const threshold = config.antispam_threshold || 5;
 
         while (arr.length && now - arr[0] > timeframe) arr.shift();
@@ -94,7 +94,7 @@ class AntiSpam {
                 const logChannel = guild.channels.cache.get(logChannels.automod_log);
                 if (logChannel) {
                     const embed = new EmbedBuilder()
-                        .setColor('#FF6600')
+                        .setColor('#FF0000') // Force consistent security red
                         .setTitle('🚫 Anti-Spam Triggered')
                         .setDescription(`${member} a déclenché l'anti-spam.`)
                         .addFields(
@@ -107,6 +107,15 @@ class AntiSpam {
                         .setTimestamp();
 
                     await logChannel.send({ embeds: [embed] });
+
+                    // Also fire centralized security log
+                    if (this.client.logs) {
+                        await this.client.logs.logSecurity(guild, 'ANTI-SPAM', {
+                            user: msg.author,
+                            severity: 'HAUTE',
+                            description: `${msg.author.tag} a envoyé ${messageCount} messages en ${timeframe}ms. Action appliquée: ${actionText}`
+                        });
+                    }
                 }
             }
 

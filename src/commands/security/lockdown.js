@@ -5,7 +5,7 @@ module.exports = {
     name: 'lockdown',
     description: 'Verrouiller le serveur entier (tous les salons en lecture seule)',
     category: 'security',
-    aliases: ['lock', 'lockserver'],
+    aliases: ['lockserver'],
     permissions: [PermissionFlagsBits.Administrator],
     cooldown: 10,
     usage: '[raison]',

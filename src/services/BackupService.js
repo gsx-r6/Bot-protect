@@ -28,7 +28,7 @@ class BackupService {
             } catch (e) {
                 logger.warn('[Backup] Could not fetch guild:', e.message);
             }
-            
+
             if (guild.roles) {
                 try { await guild.roles.fetch(); } catch (e) { logger.warn('[Backup] Could not fetch roles:', e.message); }
             }
@@ -336,6 +336,46 @@ class BackupService {
             }
         } catch (err) {
             logger.error('[Backup] Erreur lors du nettoyage:', err);
+        }
+    }
+
+    /**
+     * Lancer le cycle de backup automatique (toutes les 24h)
+     */
+    initAutoBackup(client) {
+        logger.info('[Backup] Système de backup automatique initialisé (Intervalle: 24h)');
+
+        // Premier backup après 1 minute
+        setTimeout(() => this.runGlobalBackup(client), 60000);
+
+        // Puis toutes les 24h
+        setInterval(() => this.runGlobalBackup(client), 24 * 60 * 60 * 1000);
+    }
+
+    async runGlobalBackup(client) {
+        logger.info('[Backup] Lancement du backup automatique global...');
+
+        // 1. Sauvegarde physique du fichier .db
+        this.backupDatabase();
+
+        // 2. Sauvegarde JSON pour chaque serveur
+        for (const guild of client.guilds.cache.values()) {
+            await this.createBackup(guild);
+        }
+    }
+
+    backupDatabase() {
+        try {
+            const db = require('../database/database');
+            const sourcePath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'nami.db');
+            const destPath = path.join(this.backupDir, `db-snapshot-${Date.now()}.db`);
+
+            // better-sqlite3 a une méthode native efficace pour ça
+            db.db.backup(destPath)
+                .then(() => logger.info(`[Backup] Snapshot DB créé: ${path.basename(destPath)}`))
+                .catch(err => logger.error('[Backup] Échec snapshot DB:', err));
+        } catch (err) {
+            logger.error('[Backup] Erreur backupDatabase:', err);
         }
     }
 }

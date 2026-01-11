@@ -9,13 +9,9 @@ module.exports = {
         try {
             if (!channel.guild) return;
             logger.info(`🗑️ Canal supprimé: ${channel.name} (${channel.id})`);
-            
+
             if (client.logs) {
-                client.logs.logChannels(channel.guild, 'DELETE', { channel }).catch(() => {});
-            }
-            
-            if (client.loggerService) {
-                client.loggerService.logChannelDelete(channel);
+                client.logs.logChannelDelete(channel);
             }
         } catch (e) {
             logger.error('[ChannelDelete] Error:', e);

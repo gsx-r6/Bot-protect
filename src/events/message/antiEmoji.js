@@ -26,12 +26,16 @@ module.exports = {
                 logger.info(`[AntiEmoji] Message supprimé de ${message.author.tag}: ${emojis.length} emojis`);
 
                 // Log dans le salon automod
-                if (client.loggerService) {
+                if (client.logs) {
                     try {
-                        await client.loggerService.logAutomod(message.guild, 'EMOJI_SPAM', {
+                        await client.logs.logSecurity(message.guild, 'EMOJI_SPAM_DETECTE', {
                             user: message.author,
-                            content: message.content,
-                            emojiCount: emojis.length
+                            severity: 'BASSE',
+                            description: `Spam d'emojis détecté dans ${message.channel}`,
+                            extras: {
+                                Emojis: emojis.length,
+                                Contenu: message.content
+                            }
                         });
                     } catch (e) {
                         // Ignore

@@ -32,12 +32,16 @@ module.exports = {
                 logger.info(`[AntiZalgo] Message suspect supprimé de ${message.author.tag}`);
 
                 // Log dans le salon automod
-                if (client.loggerService) {
+                if (client.logs) {
                     try {
-                        await client.loggerService.logAutomod(message.guild, 'ZALGO', {
+                        await client.logs.logSecurity(message.guild, 'ZALGO_DETECTE', {
                             user: message.author,
-                            content: message.content,
-                            type: hasZalgo ? 'Zalgo' : 'Unicode suspect'
+                            severity: 'MOYENNE',
+                            description: `Caractères suspects détectés dans ${message.channel}`,
+                            extras: {
+                                Type: hasZalgo ? 'Zalgo' : 'Unicode suspect',
+                                Contenu: message.content
+                            }
                         });
                     } catch (e) {
                         // Ignore

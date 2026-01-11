@@ -19,7 +19,7 @@ module.exports = {
             const percentage = (uppercase.length / letters.length) * 100;
 
             // Si >70% de majuscules
-            if (percentage > 70) {
+            if (percentage > 80) {
                 await message.delete().catch(() => { });
 
                 const warning = await message.channel.send({
@@ -31,12 +31,16 @@ module.exports = {
                 logger.info(`[AntiCaps] Message supprimé de ${message.author.tag}: ${percentage.toFixed(1)}% CAPS`);
 
                 // Log dans le salon automod si configuré
-                if (client.loggerService) {
+                if (client.logs) {
                     try {
-                        await client.loggerService.logAutomod(message.guild, 'CAPS', {
+                        await client.logs.logSecurity(message.guild, 'CAPS_LOCK_EXCESSIF', {
                             user: message.author,
-                            content: message.content,
-                            percentage: Math.round(percentage)
+                            severity: 'BASSE',
+                            description: `Caps Lock excessif détecté dans ${message.channel}`,
+                            extras: {
+                                Pourcentage: `${Math.round(percentage)}%`,
+                                Contenu: message.content
+                            }
                         });
                     } catch (e) {
                         // Ignore

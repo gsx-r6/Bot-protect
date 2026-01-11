@@ -7,10 +7,11 @@ Fournir un bot Discord de modération et de protection "UHQ" (Ultra High Quality
 
 ## 2. Fonctionnalités Clés
 - **Protection Avancée** : Anti-Raid, Anti-Spam, Protection des Rôles et Canaux.
-- **Modération** : Ban, Kick, Mute, Warns, Notes.
-- **Logs** : Système de logging granulaire (vocal, messages, modération).
-- **Tickets** : Système de support intégré avec transcrits.
-- **Gestion des Rois** : Système de permissions propriétaire (`rank_permissions`).
+- **Modération Consolidée** : Ban, Kick, Mute, Timeout (bloque tout), Warns. Interface simplifiée (`+clear` intégrant purge).
+- **Logging Centralisé** : Configuration unique via menu interactif (`+setlogger`). Journalisation granulaire (vocal, messages, modération, sécurité).
+- **Backups Unifiés** : Gestion complète des sauvegardes via une commande unique (`+backup <create|list|load>`).
+- **Tickets** : Système de support intégré avec transcrits et gestion des permissions staff.
+- **Gestion des Permissions** : Système hiérarchique propriétaire (`rank_permissions`) et protection contre les modifications de rôles non autorisées.
 
 ## 3. Utilisateurs Cibles
 - Propriétaires de serveurs Discord communautaires.

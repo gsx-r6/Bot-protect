@@ -4,7 +4,7 @@ const commandHandler = require('../handlers/commandHandler');
 const eventHandler = require('../handlers/eventHandler');
 const logger = require('../utils/logger');
 const LogService = require('../services/LogService');
-const LoggerService = require('../services/LoggerService');
+const LogService = require('../services/LogService');
 
 class NamiClient extends Client {
     constructor() {
@@ -25,8 +25,7 @@ class NamiClient extends Client {
         this.aliases = new Collection();
         this.cooldowns = new Collection();
         this.logger = logger;
-        this.logs = null;
-        this.loggerService = new LoggerService(this);
+        this.logs = new LogService(this);
 
         // Attach runtime config
         try {
@@ -52,8 +51,12 @@ class NamiClient extends Client {
         try {
             const statsJob = require('../jobs/statsVoiceUpdater');
             statsJob.start(this);
+
+            // Initialisation des backups automatiques
+            const BackupService = require('../services/BackupService');
+            BackupService.initAutoBackup(this);
         } catch (e) {
-            logger.warn('Pas de statsVoiceUpdater ou échec du démarrage : ' + (e.message || e));
+            logger.warn('Échec du démarrage des jobs de fond : ' + (e.message || e));
         }
         logger.info('NamiClient démarré avec succès');
     }

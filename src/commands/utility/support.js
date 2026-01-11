@@ -2,21 +2,21 @@ const embeds = require('../../utils/embeds');
 
 module.exports = {
     name: 'support',
-    description: 'Donne le lien du serveur support',
+    description: 'Donne le le contact du createur du bot',
     category: 'utility',
     aliases: ['serveur', 'aide'],
     cooldown: 10,
-    
+
     async execute(message, args, client) {
         try {
-            const embed = embeds.info('', '🆘 Serveur de Support', {
+            const embed = embeds.info('', '🆘 Support', {
                 fields: [
-                    { name: '🔗 Lien du serveur', value: 'https://discord.gg/votre-serveur-support', inline: false },
-                    { name: '📧 Contact', value: 'Rejoignez notre serveur pour obtenir de l\'aide et du support.', inline: false },
+                    { name: '🔗 ID/@', value: '<@1431362559079874630> ou @gsx-r6', inline: false },
+                    { name: '📧 Contact', value: 'Contacte moi pour obtenir de l\'aide et du support.', inline: false },
                     { name: '📖 Documentation', value: 'Utilisez `+help` pour voir toutes les commandes', inline: false }
                 ]
             });
-            
+
             return message.reply({ embeds: [embed] });
         } catch (err) {
             client.logger.error('Support command error: ' + err.message);

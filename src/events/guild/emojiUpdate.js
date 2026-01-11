@@ -4,16 +4,16 @@ const logger = require('../../utils/logger');
 module.exports = {
     name: Events.GuildEmojiUpdate,
     once: false,
-    
+
     async execute(oldEmoji, newEmoji, client) {
         try {
             if (!newEmoji.guild) return;
-            
+
             if (oldEmoji.name !== newEmoji.name) {
                 logger.info(`✏️ Emoji modifié: ${oldEmoji.name} -> ${newEmoji.name} dans ${newEmoji.guild.name}`);
-                
-                if (client.loggerService) {
-                    client.loggerService.logEmojiUpdate(oldEmoji, newEmoji);
+
+                if (client.logs) {
+                    client.logs.logEmojiUpdate(oldEmoji, newEmoji);
                 }
             }
         } catch (error) {

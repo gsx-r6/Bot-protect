@@ -9,13 +9,9 @@ module.exports = {
         try {
             if (!channel.guild) return;
             logger.info(`🆕 Canal créé: ${channel.name} (${channel.id})`);
-            
+
             if (client.logs) {
-                client.logs.logChannels(channel.guild, 'CREATE', { channel }).catch(() => {});
-            }
-            
-            if (client.loggerService) {
-                client.loggerService.logChannelCreate(channel);
+                client.logs.logChannelCreate(channel);
             }
         } catch (e) {
             logger.error('[ChannelCreate] Error:', e);

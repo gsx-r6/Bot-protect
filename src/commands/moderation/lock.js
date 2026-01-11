@@ -2,8 +2,8 @@ const { PermissionFlagsBits } = require('discord.js');
 const embeds = require('../../utils/embeds');
 
 module.exports = {
-    name: 'lock-channel',
-    description: 'Verrouiller un salon (permissions everyone SEND_MESSAGES false)',
+    name: 'lock',
+    description: 'Verrouiller le salon actuel',
     category: 'moderation',
     permissions: [PermissionFlagsBits.ManageChannels],
     async execute(message, args, client) {

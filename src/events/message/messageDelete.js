@@ -19,17 +19,8 @@ module.exports = {
                 date: new Date()
             });
 
-            if (client.logs && message.author) {
-                client.logs.logMessage(message.guild, 'DELETE', {
-                    author: message.author,
-                    channel: message.channel,
-                    messageId: message.id,
-                    content: message.content
-                }).catch(() => {});
-            }
-
-            if (client.loggerService) {
-                client.loggerService.logMessageDelete(message);
+            if (client.logs) {
+                client.logs.logMessageDelete(message);
             }
         } catch (error) {
             logger.error('[MessageDelete] Error:', error);

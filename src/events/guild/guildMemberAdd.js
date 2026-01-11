@@ -72,13 +72,7 @@ module.exports = {
 
             // 3. LOGS
             if (client.logs) {
-                client.logs.logMember(member.guild, 'JOIN', {
-                    user: member.user,
-                    memberCount: member.guild.memberCount
-                }).catch(() => { });
-            }
-            if (client.loggerService) {
-                client.loggerService.logMemberJoin(member);
+                client.logs.logMemberJoin(member);
             }
 
             // 4. STATS

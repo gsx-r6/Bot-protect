@@ -23,7 +23,7 @@ const CATEGORY_CONFIG = {
     'owner': { emoji: '👑', label: 'Propriétaire', description: 'Commandes réservées au propriétaire du bot' },
     'security': { emoji: '🛡️', label: 'Sécurité', description: 'Anti-raid, Quarantine, Lockdown, Whitelist' },
     'moderation': { emoji: '🔨', label: 'Modération', description: 'Ban, Kick, Mute, Warn, Mass Actions' },
-    'administration': { emoji: '⚙️', label: 'Administration', description: 'Setup, Config, Backup, Restore' },
+    'administration': { emoji: '⚙️', label: 'Administration', description: 'Setup, Config, Backup, Roles' },
     'tickets': { emoji: '🎫', label: 'Tickets', description: 'Gestion du support et tickets utilisateurs' },
     'logging': { emoji: '📝', label: 'Logs & Audit', description: 'Journalisation des actions et événements' },
     'utility': { emoji: '🔧', label: 'Utilitaires', description: 'Poll, Embed, Outils divers' },

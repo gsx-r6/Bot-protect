@@ -32,13 +32,17 @@ module.exports = {
                 logger.info(`[AntiMention] Message supprimé de ${message.author.tag}: ${mentions} mentions`);
 
                 // Log dans le salon automod
-                if (client.loggerService) {
+                if (client.logs) {
                     try {
-                        await client.loggerService.logAutomod(message.guild, 'MENTION_SPAM', {
+                        await client.logs.logSecurity(message.guild, 'MENTION_SPAM_DETECTE', {
                             user: message.author,
-                            content: message.content,
-                            mentionCount: mentions,
-                            action: 'Mute 30s'
+                            severity: 'HAUTE',
+                            description: `Spam de mentions détecté dans ${message.channel}`,
+                            extras: {
+                                Mentions: mentions,
+                                Action: 'Mute 30s',
+                                Contenu: message.content
+                            }
                         });
                     } catch (e) {
                         // Ignore

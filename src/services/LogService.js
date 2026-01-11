@@ -12,9 +12,20 @@ if (!fs.existsSync(LOGS_DIR)) {
     try { fs.mkdirSync(LOGS_DIR, { recursive: true }); } catch (e) { /* ignore */ }
 }
 
+const LOG_COLORS = {
+    MODERATION: '#FF4343', // Rouge vif
+    SECURITY: '#FF0000',   // Rouge alerte
+    MEMBER: '#7289DA',     // Blurple
+    MESSAGE: '#FAA61A',    // Orange
+    VOICE: '#43B581',      // Vert
+    CHANNELS: '#9B59B6',   // Violet
+    GUILD: '#0099FF'       // Bleu
+};
+
 class LogService {
     constructor(client) {
         this.client = client;
+        this.colors = LOG_COLORS;
         this.logChannelIds = {
             moderation: process.env.LOG_CHANNEL_MODERATION || '',
             member: process.env.LOG_CHANNEL_MEMBER || '',
@@ -26,14 +37,55 @@ class LogService {
             channels: process.env.LOG_CHANNEL_CHANNELS || ''
         };
         this.channelsCache = new Map();
+        this.configCache = new Map();
+        this.cacheTTL = 5 * 60 * 1000;
         this.isInitialized = false;
     }
 
-    async getChannelFromCache(guild, channelId) {
-        const cacheKey = `${guild.id}_${channelId}`;
+    getConfig(guildId) {
+        const cacheKey = `config_${guildId}`;
+        const cached = this.configCache.get(cacheKey);
 
-        if (this.channelsCache.has(cacheKey)) {
-            return this.channelsCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+            return cached.data;
+        }
+
+        const db = require('../database/database');
+        const config = db.getLoggerChannels(guildId);
+        this.configCache.set(cacheKey, { data: config, timestamp: Date.now() });
+        return config;
+    }
+
+    clearConfigCache(guildId) {
+        this.configCache.delete(`config_${guildId}`);
+        // Also clear channels cache for this guild if needed
+        for (const key of this.channelsCache.keys()) {
+            if (key.startsWith(`${guildId}_`)) {
+                this.channelsCache.delete(key);
+            }
+        }
+    }
+
+    setChannel(guildId, logType, channelId) {
+        const db = require('../database/database');
+        db.setLoggerChannel(guildId, logType, channelId);
+        this.clearConfigCache(guildId);
+    }
+
+    removeChannel(guildId, logType) {
+        const db = require('../database/database');
+        db.removeLoggerChannel(guildId, logType);
+        this.clearConfigCache(guildId);
+    }
+
+    async getChannel(guild, channelId) {
+        if (!channelId) return null;
+
+        const cacheKey = `${guild.id}_${channelId}`;
+        const cached = this.channelsCache.get(cacheKey);
+
+        if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+            return cached.channel;
         }
 
         let channel = guild.channels.cache.get(channelId);
@@ -47,10 +99,38 @@ class LogService {
         }
 
         if (channel) {
-            this.channelsCache.set(cacheKey, channel);
+            this.channelsCache.set(cacheKey, { channel, timestamp: Date.now() });
         }
 
         return channel;
+    }
+
+    async sendLog(guild, logType, embed) {
+        const config = this.getConfig(guild.id);
+        if (!config) return false;
+
+        const channelId = config[logType];
+        if (!channelId) return false;
+
+        try {
+            const channel = await this.getChannel(guild, channelId);
+            if (!channel || !channel.isTextBased()) return false;
+
+            const permissions = channel.permissionsFor(guild.members.me);
+            if (!permissions?.has('ViewChannel') || !permissions?.has('SendMessages') || !permissions?.has('EmbedLinks')) {
+                return false;
+            }
+
+            await channel.send({ embeds: [embed] }).catch(() => { });
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async logAutomod(guild, type, data) {
+        if (!guild) return;
+        return this.sendLog(guild, 'automod_log', data);
     }
 
     /**
@@ -60,7 +140,7 @@ class LogService {
         if (!this.logChannelIds.moderation) return;
 
         const embed = new EmbedBuilder()
-            .setColor('#FF0000')
+            .setColor(this.colors.MODERATION)
             .setTitle(`🛡️ ${action}`)
             .setTimestamp()
             .setFooter({ text: 'Nami Protect ⚡' });
@@ -105,7 +185,7 @@ class LogService {
         if (!this.logChannelIds.member) return;
 
         const embed = new EmbedBuilder()
-            .setColor(action === 'JOIN' ? '#00FF00' : '#FF0000')
+            .setColor(this.colors.MEMBER)
             .setTitle(`${action === 'JOIN' ? '✅ Membre arrivé' : '❌ Membre parti'}`)
             .setThumbnail(details.user.displayAvatarURL())
             .setTimestamp()
@@ -133,7 +213,7 @@ class LogService {
         if (!this.logChannelIds.message) return;
 
         const embed = new EmbedBuilder()
-            .setColor(action === 'DELETE' ? '#FF0000' : '#FFA500')
+            .setColor(this.colors.MESSAGE)
             .setTitle(`${action === 'DELETE' ? '❌ Message supprimé' : '✏️ Message modifié'}`)
             .setTimestamp()
             .setFooter({ text: 'Nami Protect ⚡' });
@@ -170,7 +250,7 @@ class LogService {
         if (!this.logChannelIds.voice) return;
 
         const embed = new EmbedBuilder()
-            .setColor(action === 'JOIN' ? '#00FF00' : '#FF0000')
+            .setColor(this.colors.VOICE)
             .setTitle(`${action === 'JOIN' ? '🎤 Connecté à la voix' : '🔇 Déconnecté de la voix'}`)
             .setTimestamp()
             .setFooter({ text: 'Nami Protect ⚡' });
@@ -196,7 +276,7 @@ class LogService {
         if (!this.logChannelIds.guild) return;
 
         const embed = new EmbedBuilder()
-            .setColor('#0099FF')
+            .setColor(this.colors.GUILD)
             .setTitle(`⚙️ ${action}`)
             .setTimestamp()
             .setFooter({ text: 'Nami Protect ⚡' });
@@ -235,7 +315,7 @@ class LogService {
         if (!this.logChannelIds.security) return;
 
         const embed = new EmbedBuilder()
-            .setColor('#FF0000')
+            .setColor(this.colors.SECURITY)
             .setTitle(`🔒 ALERTE SÉCURITÉ - ${action}`)
             .setTimestamp()
             .setFooter({ text: 'Nami Protect ⚡' });
@@ -274,7 +354,7 @@ class LogService {
         if (!this.logChannelIds.roles) return;
 
         const embed = new EmbedBuilder()
-            .setColor('#9900FF')
+            .setColor(this.colors.CHANNELS) // Reuse standard violet
             .setTitle(`${action === 'ADD' ? '✅ Rôle ajouté' : '❌ Rôle retiré'}`)
             .setTimestamp()
             .setFooter({ text: 'Nami Protect ⚡' });
@@ -332,6 +412,168 @@ class LogService {
         return this.sendToChannel(guild, this.logChannelIds.channels, embed);
     }
 
+    // --- Legacy LoggerService Bridge Methods ---
+    // (To be used by automated events)
+
+    async logChannelCreate(channel) {
+        if (!channel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        const embed = loggerEmbeds.channelCreate(this.client, channel);
+        this.sendLog(channel.guild, 'channel_log', embed);
+    }
+
+    async logChannelDelete(channel) {
+        if (!channel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        const embed = loggerEmbeds.channelDelete(this.client, channel);
+        this.sendLog(channel.guild, 'channel_log', embed);
+    }
+
+    async logMessageDelete(message) {
+        if (!message.guild || message.author?.bot) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        const embed = loggerEmbeds.messageDelete(this.client, message);
+        this.sendLog(message.guild, 'message_log', embed);
+    }
+
+    async logMessageUpdate(oldMessage, newMessage) {
+        if (!newMessage.guild || newMessage.author?.bot || oldMessage.content === newMessage.content) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        const config = this.getConfig(newMessage.guild.id);
+        if (!config || !config.message_log) return;
+
+        const oldEmbed = loggerEmbeds.messageUpdateOld(this.client, oldMessage);
+        const newEmbed = loggerEmbeds.messageUpdateNew(this.client, oldMessage, newMessage);
+
+        const channel = await this.getChannel(newMessage.guild, config.message_log);
+        if (channel && channel.isTextBased()) {
+            channel.send({ embeds: [oldEmbed, newEmbed] }).catch(() => { });
+        }
+    }
+
+    // Voice
+    async logVoiceJoin(newState) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceJoin(this.client, newState));
+    }
+    async logVoiceLeave(oldState) {
+        if (!oldState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(oldState.guild, 'voice_log', loggerEmbeds.voiceLeave(this.client, oldState));
+    }
+    async logVoiceSwitch(oldState, newState) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceSwitch(this.client, oldState, newState));
+    }
+    async logVoiceMute(newState) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceMute(this.client, newState));
+    }
+    async logVoiceUnmute(newState) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceUnmute(this.client, newState));
+    }
+    async logVoiceDeaf(newState) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceDeaf(this.client, newState));
+    }
+    async logVoiceUndeaf(newState) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceUndeaf(this.client, newState));
+    }
+    async logVoiceServerMute(newState, muted) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceServerMute(this.client, newState, muted));
+    }
+    async logVoiceServerDeaf(newState, deafened) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceServerDeaf(this.client, newState, deafened));
+    }
+    async logVoiceStream(newState, streaming) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceStream(this.client, newState, streaming));
+    }
+    async logVoiceVideo(newState, video) {
+        if (!newState.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newState.guild, 'voice_log', loggerEmbeds.voiceVideo(this.client, newState, video));
+    }
+
+    // Members & Bans
+    async logMemberJoin(member) {
+        if (!member.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(member.guild, 'join_log', loggerEmbeds.guildMemberAdd(this.client, member));
+    }
+    async logMemberLeave(member) {
+        if (!member.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(member.guild, 'leave_log', loggerEmbeds.guildMemberRemove(this.client, member));
+    }
+    async logBanAdd(ban) {
+        if (!ban.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(ban.guild, 'ban_log', loggerEmbeds.guildBanAdd(this.client, ban));
+    }
+    async logBanRemove(ban) {
+        if (!ban.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(ban.guild, 'ban_log', loggerEmbeds.guildBanRemove(this.client, ban));
+    }
+
+    // Emojis
+    async logEmojiCreate(emoji) {
+        if (!emoji.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(emoji.guild, 'emoji_log', loggerEmbeds.emojiCreate(this.client, emoji));
+    }
+    async logEmojiDelete(emoji) {
+        if (!emoji.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(emoji.guild, 'emoji_log', loggerEmbeds.emojiDelete(this.client, emoji));
+    }
+    async logEmojiUpdate(oldEmoji, newEmoji) {
+        if (!newEmoji.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newEmoji.guild, 'emoji_log', loggerEmbeds.emojiUpdate(this.client, oldEmoji, newEmoji));
+    }
+
+    // Channel Updates
+    async logChannelPinsUpdate(channel) {
+        if (!channel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(channel.guild, 'channel_log', loggerEmbeds.channelPinsUpdate(this.client, channel));
+    }
+    async logChannelUpdateName(oldChannel, newChannel) {
+        if (!newChannel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newChannel.guild, 'channel_log', loggerEmbeds.channelUpdateName(this.client, oldChannel, newChannel));
+    }
+    async logChannelUpdateNSFW(oldChannel, newChannel) {
+        if (!newChannel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newChannel.guild, 'channel_log', loggerEmbeds.channelUpdateNSFW(this.client, oldChannel, newChannel));
+    }
+    async logChannelUpdateTopic(oldChannel, newChannel) {
+        if (!newChannel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newChannel.guild, 'channel_log', loggerEmbeds.channelUpdateTopic(this.client, oldChannel, newChannel));
+    }
+    async logChannelUpdateSlowmode(oldChannel, newChannel) {
+        if (!newChannel.guild) return;
+        const loggerEmbeds = require('../utils/loggerEmbeds');
+        this.sendLog(newChannel.guild, 'channel_log', loggerEmbeds.channelUpdateSlowmode(this.client, oldChannel, newChannel));
+    }
+
     /**
      * Envoyer l'embed au canal spécifié
      */
@@ -342,7 +584,7 @@ class LogService {
         }
 
         try {
-            const channel = await this.getChannelFromCache(guild, channelId);
+            const channel = await this.getChannel(guild, channelId);
 
             if (!channel || !channel.isTextBased()) {
                 // Silencieux si le channel n'existe pas, on log juste en local

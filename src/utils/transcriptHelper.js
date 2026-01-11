@@ -9,7 +9,20 @@ module.exports = {
      * @returns {AttachmentBuilder}
      */
     async generateHTMLTranscript(channel, messages, guild) {
+        const escapeHTML = (str) => {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, (m) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            }[m]));
+        };
+
         const sortedMessages = [...messages.values()].reverse();
+        const escapedChannelName = escapeHTML(channel.name);
+        const escapedGuildName = escapeHTML(guild.name);
 
         let html = `
 <!DOCTYPE html>
@@ -17,7 +30,7 @@ module.exports = {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transcript - ${channel.name}</title>
+    <title>Transcript - ${escapedChannelName}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
         body {
@@ -96,8 +109,8 @@ module.exports = {
 <body>
     <div class="header">
         <div>
-            <h1>#${channel.name}</h1>
-            <div class="meta">${guild.name} • ${sortedMessages.length} messages</div>
+            <h1>#${escapedChannelName}</h1>
+            <div class="meta">${escapedGuildName} • ${sortedMessages.length} messages</div>
         </div>
         <div class="meta">Généré le ${new Date().toLocaleString('fr-FR')}</div>
     </div>
@@ -106,10 +119,10 @@ module.exports = {
 
         for (const msg of sortedMessages) {
             const avatarUrl = msg.author.displayAvatarURL({ extension: 'png', size: 64 });
-            const username = msg.author.username;
+            const username = escapeHTML(msg.author.username);
             const date = msg.createdAt.toLocaleString('fr-FR');
             const content = msg.content
-                ? msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
+                ? escapeHTML(msg.content).replace(/\n/g, '<br>')
                 : '';
 
             html += `
@@ -140,18 +153,18 @@ module.exports = {
                 msg.embeds.forEach(embed => {
                     const color = embed.hexColor || '#202225';
                     html += `<div class="embed" style="border-left-color: ${color}">`;
-                    if (embed.title) html += `<div class="embed-title">${embed.title}</div>`;
-                    if (embed.description) html += `<div class="embed-desc">${embed.description.replace(/\n/g, '<br>')}</div>`;
+                    if (embed.title) html += `<div class="embed-title">${escapeHTML(embed.title)}</div>`;
+                    if (embed.description) html += `<div class="embed-desc">${escapeHTML(embed.description).replace(/\n/g, '<br>')}</div>`;
 
                     if (embed.fields && embed.fields.length > 0) {
                         embed.fields.forEach(field => {
                             html += `<div class="embed-field">
-                                <div class="field-name">${field.name}</div>
-                                <div class="field-value">${field.value.replace(/\n/g, '<br>')}</div>
+                                <div class="field-name">${escapeHTML(field.name)}</div>
+                                <div class="field-value">${escapeHTML(field.value).replace(/\n/g, '<br>')}</div>
                             </div>`;
                         });
                     }
-                    if (embed.footer) html += `<div style="font-size:11px; margin-top:5px; color:#72767d">${embed.footer.text}</div>`;
+                    if (embed.footer && embed.footer.text) html += `<div style="font-size:11px; margin-top:5px; color:#72767d">${escapeHTML(embed.footer.text)}</div>`;
                     html += `</div>`;
                 });
             }

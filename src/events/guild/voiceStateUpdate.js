@@ -4,48 +4,48 @@ const logger = require('../../utils/logger');
 module.exports = {
     name: Events.VoiceStateUpdate,
     once: false,
-    
+
     async execute(oldState, newState, client) {
         try {
-            if (client.loggerService) {
+            if (client.logs) {
                 if (!oldState.channelId && newState.channelId) {
-                    client.loggerService.logVoiceJoin(newState);
+                    client.logs.logVoiceJoin(newState);
                 } else if (oldState.channelId && !newState.channelId) {
-                    client.loggerService.logVoiceLeave(oldState);
+                    client.logs.logVoiceLeave(oldState);
                 } else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
-                    client.loggerService.logVoiceSwitch(oldState, newState);
+                    client.logs.logVoiceSwitch(oldState, newState);
                 }
 
                 if (oldState.selfMute !== newState.selfMute) {
                     if (newState.selfMute) {
-                        client.loggerService.logVoiceMute(newState);
+                        client.logs.logVoiceMute(newState);
                     } else {
-                        client.loggerService.logVoiceUnmute(newState);
+                        client.logs.logVoiceUnmute(newState);
                     }
                 }
 
                 if (oldState.selfDeaf !== newState.selfDeaf) {
                     if (newState.selfDeaf) {
-                        client.loggerService.logVoiceDeaf(newState);
+                        client.logs.logVoiceDeaf(newState);
                     } else {
-                        client.loggerService.logVoiceUndeaf(newState);
+                        client.logs.logVoiceUndeaf(newState);
                     }
                 }
 
                 if (oldState.serverMute !== newState.serverMute) {
-                    client.loggerService.logVoiceServerMute(newState, newState.serverMute);
+                    client.logs.logVoiceServerMute(newState, newState.serverMute);
                 }
 
                 if (oldState.serverDeaf !== newState.serverDeaf) {
-                    client.loggerService.logVoiceServerDeaf(newState, newState.serverDeaf);
+                    client.logs.logVoiceServerDeaf(newState, newState.serverDeaf);
                 }
 
                 if (oldState.streaming !== newState.streaming) {
-                    client.loggerService.logVoiceStream(newState, newState.streaming);
+                    client.logs.logVoiceStream(newState, newState.streaming);
                 }
 
                 if (oldState.selfVideo !== newState.selfVideo) {
-                    client.loggerService.logVoiceVideo(newState, newState.selfVideo);
+                    client.logs.logVoiceVideo(newState, newState.selfVideo);
                 }
             }
 
@@ -53,9 +53,9 @@ module.exports = {
                 try {
                     const statsJob = require('../../jobs/statsVoiceUpdater');
                     if (statsJob && statsJob.updateOnce) {
-                        statsJob.updateOnce(client, newState.guild).catch(() => {});
+                        statsJob.updateOnce(client, newState.guild).catch(() => { });
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
         } catch (error) {
             logger.error('[VoiceStateUpdate] Erreur:', error);

@@ -43,11 +43,15 @@ module.exports = {
                 logger.info(`[AntiRepeat] Message répété supprimé de ${message.author.tag}`);
 
                 // Log dans le salon automod
-                if (client.loggerService) {
+                if (client.logs) {
                     try {
-                        await client.loggerService.logAutomod(message.guild, 'REPEAT', {
+                        await client.logs.logSecurity(message.guild, 'REPETITION_DETECTEE', {
                             user: message.author,
-                            content: message.content
+                            severity: 'BASSE',
+                            description: `Message répété supprimé dans ${message.channel}`,
+                            extras: {
+                                Contenu: message.content
+                            }
                         });
                     } catch (e) {
                         // Ignore

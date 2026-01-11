@@ -3,26 +3,24 @@
 ## 🛡️ Présentation
 **Bot-protect** est un bot Discord robuste de modération et de sécurité conçu pour protéger les communautés contre les raids, le spam et les actions malveillantes. Il intègre une protection avancée des rôles (`RoleProtector`), un système anti-raid intelligent (`AntiRaid`) et une gestion dynamique de la configuration.
 
+> **103+ commandes** réparties en **10 catégories** : Sécurité, Modération, Administration, Tickets, Logging, Utility, Information, Staff, System, Owner.
+
 ---
 
 ## 🚀 Fonctionnalités Clés
 
-### 🔒 Sécurité
-- **Anti-Raid** : Détecte les arrivées massives (Raids) basées sur des seuils dynamiques.
-  - *Action* : Active automatiquement le "Mode Raid" et met les nouveaux membres en quarantaine.
-  - *Persistance* : L'état du raid survit aux redémarrages du bot.
-- **Protecteur de Rôles (Role Protector)** : Surveille activement les rôles critiques (AutoRole, Quarantaine, Staff Ticket).
-  - *Vérification d'Intégrité* : Vérifie l'existence des rôles toutes les 5 minutes. Répare automatiquement les suppressions ou les ajouts de permissions dangereuses.
-  - *Audit* : Alertes MP envoyées au propriétaire pour les événements à haut risque.
+### 🔒 Sécurité & Protection
+- **Anti-Raid** : Détecte les arrivées massives basées sur des seuils dynamiques configurables en temps réel.
+- **Protecteur de Rôles** : Surveillance active de l'intégrité des rôles critiques (Snapshots et Rollbacks automatiques).
+- **Anti-Spam** : Filtrage dynamique avec paramètres persistés en base de données.
 
-### ⚙️ Modération
-- **Auto-Mod** : Filtres configurables (liens, majuscules, mentions, etc.).
-- **Sanctions** : Gestion des Avertissements (Warn), Expulsions (Kick), Bannissements (Ban), Muets (Mute).
-- **Logs** : Salons de logs granulaires pour toutes les actions (ModLog, AutoModLog, etc.).
+### ⚙️ Modération & Gestion (Consolidée)
+- **Modération UX** : Commandes simplifiées comme `+clear` (incluant purge avancée) et distinction entre `+lock` (salon) et `+lockdown` (serveur).
+- **Backups Unifiés** : Gestion complète du cycle de vie des serveurs avec `+backup <create|list|load>`.
+- **Logs Centralisés** : Configuration unique via le menu intelligent `+setlogger`.
 
-### 🎫 Tickets
-- Système de tickets complet avec transcripts.
-- Catégories et rôles staff configurables par serveur.
+### 🎫 Support & Tickets
+- Système de tickets premium avec transcrits HTML sécurisés et gestion staff granulaire.
 
 ---
 
@@ -31,8 +29,7 @@
 ### Prérequis
 - Node.js >= 18.0.0
 - SQLite3
-
-### Configuration
+- Build tools pour `@napi-rs/canvas` (optionnel, pour les images)
 1. **Cloner le dépôt** :
    ```bash
    git clone <repo-url>

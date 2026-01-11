@@ -36,6 +36,7 @@ logger.info('🚀 {+} UHQ MONDE - STARTING');
 
         // Initialize Client
         const client = new NamiClient();
+        global._botClient = client; // Expose to global for shutdown handler
         await client.start();
 
     } catch (error) {
@@ -50,20 +51,20 @@ process.on('unhandledRejection', (reason, promise) => {
     // Do not exit on unhandled rejection to keep bot alive, but log strictly
 });
 
-process.on('uncaughtException', (err) => {
-    logger.error('❌ Uncaught Exception:', err);
-    logger.error('Stack:', err.stack);
-
-    // Recovery attempt or graceful shutdown
-    logger.warn('⚠️ Critical error caught. Attempting safe shutdown...');
-    setTimeout(() => {
-        process.exit(1);
-    }, 1000);
-});
-
 async function gracefulShutdown(signal) {
     logger.info(`🛑 Arrêt du bot (${signal})...`);
-    // Add any cleanup logic here (DB closing, etc. if needed)
+
+    try {
+        if (global._botClient) {
+            await global._botClient.destroy();
+            logger.info('Discord client destroyed.');
+        }
+
+        const db = require('../database/database');
+        db.close();
+    } catch (err) {
+        logger.error('Error during shutdown:', err);
+    }
 
     // Give time for logs to write to disk
     logger.info('👋 Au revoir !');
@@ -71,6 +72,15 @@ async function gracefulShutdown(signal) {
         process.exit(0);
     }, 1000);
 }
+
+process.on('uncaughtException', (err) => {
+    logger.error('❌ Uncaught Exception:', err);
+    logger.error('Stack:', err.stack);
+
+    // Recovery attempt or graceful shutdown
+    logger.warn('⚠️ Critical error caught. Attempting safe shutdown...');
+    gracefulShutdown('UncaughtException');
+});
 
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

@@ -179,11 +179,19 @@ async function confirmCloseTicket(interaction, client) {
     if (ticket) db.closeTicket(channel.id, interaction.user.id);
 
     // 3. Delete Channel
+    if (!channel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.ManageChannels)) {
+        return channel.send({
+            embeds: [new EmbedBuilder().setColor('#FF4343').setTitle('❌ Erreur de Permissions').setDescription('Je n\'ai pas la permission de supprimer ce salon. Merci de le faire manuellement.')]
+        });
+    }
+
     await channel.send({
         embeds: [new EmbedBuilder().setColor('#FF0000').setTitle('🔒 Ticket Fermé').setDescription('Suppression dans 5 secondes...')]
     });
 
-    setTimeout(() => channel.delete().catch(() => { }), 5000);
+    setTimeout(() => channel.delete().catch((err) => {
+        logger.error(`[Ticket] Failed to delete channel ${channel.id}:`, err);
+    }), 5000);
 }
 
 async function claimTicket(interaction) {
@@ -238,8 +246,10 @@ async function claimTicket(interaction) {
     await interaction.reply({ content: 'Pris en charge !', ephemeral: true });
 
     // 3. Update channel topic
-    const oldTopic = interaction.channel.topic || '';
-    interaction.channel.setTopic(`${oldTopic} | STAFF: ${interaction.user.tag}`);
+    if (interaction.channel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.ManageChannels)) {
+        const oldTopic = interaction.channel.topic || '';
+        interaction.channel.setTopic(`${oldTopic} | STAFF: ${interaction.user.tag}`).catch(() => { });
+    }
 }
 
 async function sendTranscript(interaction, client, isAuto = false) {
@@ -284,6 +294,11 @@ async function showAddUserModal(interaction) {
 
 async function addUserToTicket(interaction) {
     const userId = interaction.fields.getTextInputValue('user_id');
+
+    if (!interaction.channel.permissionsFor(interaction.guild.members.me).has(PermissionFlagsBits.ManageRoles)) {
+        return interaction.reply({ content: '❌ Je n\'ai pas la permission de modifier les accès de ce salon.', ephemeral: true });
+    }
+
     try {
         const member = await interaction.guild.members.fetch(userId);
         await interaction.channel.permissionOverwrites.edit(member, {

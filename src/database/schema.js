@@ -91,6 +91,7 @@ module.exports = {
         antijoinraid BOOLEAN DEFAULT 0,
         antiraid_threshold INTEGER DEFAULT 10,
         antiraid_timeframe INTEGER DEFAULT 10000,
+        antispam_timeframe INTEGER DEFAULT 5000,
         antinuke BOOLEAN DEFAULT 0,
         antiedit BOOLEAN DEFAULT 0,
         antibot BOOLEAN DEFAULT 0,

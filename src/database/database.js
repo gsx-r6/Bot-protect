@@ -73,6 +73,11 @@ class DB {
                     query: "ALTER TABLE automod_config ADD COLUMN antispam_action TEXT DEFAULT 'mute'"
                 },
                 {
+                    table: 'automod_config',
+                    column: 'antispam_timeframe',
+                    query: "ALTER TABLE automod_config ADD COLUMN antispam_timeframe INTEGER DEFAULT 5000"
+                },
+                {
                     table: 'guild_config',
                     column: 'verify_role_id',
                     query: "ALTER TABLE guild_config ADD COLUMN verify_role_id TEXT"
@@ -322,6 +327,13 @@ class DB {
             const startedAt = isActive ? (existing.started_at || new Date().toISOString()) : null;
             this.db.prepare('UPDATE raid_states SET is_active = ?, quarantined_members = ?, started_at = ?, updated_at = ? WHERE guild_id = ?')
                 .run(isActive ? 1 : 0, membersJson, startedAt, new Date().toISOString(), guildId);
+        }
+    }
+
+    close() {
+        if (this.db) {
+            this.db.close();
+            logger.info('SQLite database connection closed.');
         }
     }
 }
