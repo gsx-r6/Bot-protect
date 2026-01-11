@@ -54,6 +54,8 @@ module.exports = {
         log_channel TEXT,
         modlog_channel TEXT,
         verify_channel TEXT,
+        verify_role_id TEXT,
+        verify_message TEXT,
         autorole_id TEXT,
         quarantine_role_id TEXT,
         embed_color TEXT DEFAULT '#FF69B4',

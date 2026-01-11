@@ -71,6 +71,16 @@ class DB {
                     table: 'automod_config',
                     column: 'antispam_action',
                     query: "ALTER TABLE automod_config ADD COLUMN antispam_action TEXT DEFAULT 'mute'"
+                },
+                {
+                    table: 'guild_config',
+                    column: 'verify_role_id',
+                    query: "ALTER TABLE guild_config ADD COLUMN verify_role_id TEXT"
+                },
+                {
+                    table: 'guild_config',
+                    column: 'verify_message',
+                    query: "ALTER TABLE guild_config ADD COLUMN verify_message TEXT"
                 }
             ];
 
