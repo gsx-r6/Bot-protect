@@ -27,7 +27,17 @@ module.exports = {
                 return;
             }
 
-            // 2. WELCOME SYSTEM (UHQ)
+            // 2. VERIFICATION SYSTEM (RESTRICTION)
+            if (config && config.verify_channel && config.verify_role_id) {
+                const verifyChannel = member.guild.channels.cache.get(config.verify_channel);
+                if (verifyChannel) {
+                    // Optionnel: On peut envoyer un message de rappel ici ou juste laisser le salon de verif visible
+                    // Pour que le membre ne voit que le salon de verif, il faut que les permissions du serveur soient reglées 
+                    // de sorte que @everyone n'ait pas accès aux autres salons.
+                }
+            }
+
+            // 3. WELCOME SYSTEM (UHQ)
             // Récupérer la config du serveur
             const config = db.getGuildConfig(member.guild.id);
             // Vérifier si un channel de bienvenue est configuré
