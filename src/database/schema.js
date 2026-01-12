@@ -146,6 +146,17 @@ module.exports = {
         automod_log TEXT,
         updated_at TEXT
     )`,
+    role_snapshots: `CREATE TABLE IF NOT EXISTS role_snapshots (
+        guild_id TEXT,
+        role_id TEXT,
+        name TEXT,
+        color INTEGER,
+        permissions TEXT,
+        hoist BOOLEAN,
+        mentionable BOOLEAN,
+        updated_at TEXT,
+        PRIMARY KEY (guild_id, role_id)
+    )`,
     raid_states: `CREATE TABLE IF NOT EXISTS raid_states (
         guild_id TEXT PRIMARY KEY,
         is_active BOOLEAN DEFAULT 0,

@@ -66,7 +66,10 @@ class AntiRaid {
         if (this.raidMode.get(guildId)) return;
 
         this.raidMode.set(guildId, true);
-        db.setRaidState(guildId, true, recentJoins.map(j => j.memberId)); // PERSISTENCE
+        
+        // PERSISTENCE: Save both the active state AND the list of suspected member IDs
+        const memberIds = recentJoins.map(j => j.memberId);
+        db.setRaidState(guildId, true, memberIds);
 
         logger.warn(`[AntiRaid] RAID DETECTED in ${guild.name}! ${recentJoins.length} joins`);
 

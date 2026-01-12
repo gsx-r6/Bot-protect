@@ -350,6 +350,20 @@ class DB {
         }
     }
 
+    // Role Snapshots Persistence
+    saveRoleSnapshot(guildId, roleId, data) {
+        this.db.prepare('INSERT OR REPLACE INTO role_snapshots (guild_id, role_id, name, color, permissions, hoist, mentionable, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+            .run(guildId, roleId, data.name, data.color, data.permissions.toString(), data.hoist ? 1 : 0, data.mentionable ? 1 : 0, new Date().toISOString());
+    }
+
+    getRoleSnapshot(guildId, roleId) {
+        return this.db.prepare('SELECT * FROM role_snapshots WHERE guild_id = ? AND role_id = ?').get(guildId, roleId);
+    }
+
+    deleteRoleSnapshot(guildId, roleId) {
+        this.db.prepare('DELETE FROM role_snapshots WHERE guild_id = ? AND role_id = ?').run(guildId, roleId);
+    }
+
     close() {
         if (this.db) {
             this.db.close();
