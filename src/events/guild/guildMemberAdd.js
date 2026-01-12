@@ -15,16 +15,29 @@ module.exports = {
         try {
             logger.info(`➕ Nouveau membre: ${member.user.tag} dans ${member.guild.name}`);
 
-            // 1. ANTI-RAID
-            if (!antiRaidInstance) {
-                antiRaidInstance = new AdvancedAntiRaid(client);
-                setInterval(() => antiRaidInstance.cleanup(), 60000);
+            // 0. ANTI-BOT (Immediate action)
+            if (client.antiBot) {
+                await client.antiBot.onMemberAdd(member);
+                if (member.deleted || !member.guild.members.cache.has(member.id)) return;
             }
-            antiRaidInstance.trackJoin(member);
-            const wasQuarantined = await antiRaidInstance.analyzeMember(member);
-            if (wasQuarantined) {
-                logger.warn(`[Anti-Raid] ${member.user.tag} a été mis en quarantaine`);
-                return;
+
+            // 1. ANTI-RAID
+            if (client.antiRaid) {
+                client.antiRaid.trackJoin(member);
+                const wasQuarantined = await client.antiRaid.analyzeMember(member);
+                if (wasQuarantined) {
+                    logger.warn(`[Anti-Raid] ${member.user.tag} a été mis en quarantaine`);
+                    return;
+                }
+            }
+
+            // 1.5 PERSISTENT MUTE RESTORATION
+            if (client.muteService) {
+                const muteData = db.getPersistentMute(member.guild.id, member.id);
+                if (muteData) {
+                    logger.info(`[Mute Recovery] Restaurating persistent mute for ${member.user.tag}`);
+                    await client.muteService.mute(member, 0, 'Restauration de mute (rejoin)', client.user);
+                }
             }
 
             // 2. VERIFICATION SYSTEM (RESTRICTION)

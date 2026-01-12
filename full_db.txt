@@ -1,0 +1,311 @@
+﻿const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
+const logger = require('../utils/logger');
+const schema = require('./schema');
+
+class DB {
+    constructor() {
+        const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'nami.db');
+        const dir = path.dirname(dbPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+        try {
+            this.db = new Database(dbPath);
+            logger.info(`SQLite DB opened at ${dbPath}`);
+            this._init();
+        } catch (error) {
+            logger.error(`Failed to open database at ${dbPath}:`, error);
+            process.exit(1);
+        }
+    }
+
+    _init() {
+        try {
+            // Load all tables from schema
+            for (const [tableName, createQuery] of Object.entries(schema)) {
+                this.db.prepare(createQuery).run();
+            }
+            this._runMigrations();
+        } catch (error) {
+            logger.error('Database initialization failed:', error);
+            throw error;
+        }
+
+        /**
+         * Generic method to get configuration
+         * @param {string} table Name of the table
+         * @param {string} keyColumn Name of the primary key column (e.g., 'guild_id')
+         * @param {string} keyValue Value of the primary key
+         */
+        _getConfig(table, keyColumn, keyValue) {
+            try {
+                return this.db.prepare(`SELECT * FROM ${table} WHERE ${keyColumn} = ?`).get(keyValue);
+            } catch (error) {
+                logger.error(`Error fetching config from ${table}:`, error);
+                return null;
+            }
+        }
+
+        /**
+         * Generic method to set configuration
+         * @param {string} table Name of the table
+         * @param {string} keyColumn Name of the primary key column
+         * @param {string} keyValue Value of the primary key
+         * @param {string} configKey Column to update
+         * @param {any} value New value
+         */
+        _setConfig(table, keyColumn, keyValue, configKey, value) {
+            try {
+                const config = this._getConfig(table, keyColumn, keyValue);
+                if (!config) {
+                    this.db.prepare(`INSERT INTO ${table} (${keyColumn}, ${configKey}, updated_at) VALUES (?, ?, ?)`).run(keyValue, value, new Date().toISOString());
+                } else {
+                    this.db.prepare(`UPDATE ${table} SET ${configKey} = ?, updated_at = ? WHERE ${keyColumn} = ?`).run(value, new Date().toISOString(), keyValue);
+                }
+            } catch (error) {
+                logger.error(`Error setting config in ${table}:`, error);
+                throw error;
+            }
+        }
+
+        // --- Specific Implementation Helpers ---
+
+        addSanction(guild, user, type, reason, mod) {
+            this.db.prepare('INSERT INTO sanctions (guild,user,type,reason,moderator,date) VALUES (?,?,?,?,?,?)')
+                .run(guild, user, type, reason, mod, new Date().toISOString());
+        }
+
+        // Tickets helpers
+        addTicket(guild, channel, owner, topic = null) {
+            const info = this.db.prepare('INSERT INTO tickets (guild, channel, owner, topic, status, created_at) VALUES (?,?,?,?,?,?)')
+                .run(guild, channel, owner, topic, 'open', new Date().toISOString());
+            return info.lastInsertRowid;
+        }
+
+        getTicketByChannel(channel) {
+            return this.db.prepare('SELECT * FROM tickets WHERE channel = ?').get(channel);
+        }
+
+        getOpenTicketsByUser(guildId, userId) {
+            return this.db.prepare('SELECT * FROM tickets WHERE guild = ? AND owner = ? AND status = ?').all(guildId, userId, 'open');
+        }
+
+        getOpenTicketsCount(guildId, userId) {
+            return this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND owner = ? AND status = ?').get(guildId, userId, 'open').count;
+        }
+
+        getAllOpenTickets(guildId) {
+            return this.db.prepare('SELECT * FROM tickets WHERE guild = ? AND status = ? ORDER BY created_at DESC').all(guildId, 'open');
+        }
+
+        claimTicket(channelId, claimedBy) {
+            this.db.prepare('UPDATE tickets SET claimed_by = ? WHERE channel = ?').run(claimedBy, channelId);
+        }
+
+        closeTicket(channelId, closedBy) {
+            this.db.prepare('UPDATE tickets SET status = ?, closed_at = ?, closed_by = ? WHERE channel = ?')
+                .run('closed', new Date().toISOString(), closedBy, channelId);
+        }
+
+        getTicketStats(guildId) {
+            return {
+                total: this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ?').get(guildId).count,
+                open: this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?').get(guildId, 'open').count,
+                closed: this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?').get(guildId, 'closed').count
+            };
+        }
+
+        getSecurityStats(guildId) {
+            return {
+                bans: this.db.prepare('SELECT COUNT(*) as count FROM sanctions WHERE guild = ? AND type = ?').get(guildId, 'BAN')?.count || 0,
+                warnings: this.db.prepare('SELECT COUNT(*) as count FROM warnings WHERE guild_id = ?').get(guildId)?.count || 0,
+                activeRaid: this.db.prepare('SELECT is_active FROM raid_states WHERE guild_id = ?').get(guildId)?.is_active || 0,
+                kick: this.db.prepare('SELECT COUNT(*) as count FROM sanctions WHERE guild = ? AND type = ?').get(guildId, 'KICK')?.count || 0,
+            };
+        }
+
+        // Ticket config
+        getTicketConfig(guildId) {
+            return this._getConfig('ticket_config', 'guild_id', guildId);
+        }
+
+        setTicketConfig(guildId, key, value) {
+            const validKeys = ['staff_role', 'category_id', 'log_channel', 'max_tickets', 'panel_title', 'panel_description', 'panel_color', 'welcome_message', 'transcript_enabled'];
+            if (!validKeys.includes(key)) throw new Error(`Invalid ticket config key: ${key}`);
+            this._setConfig('ticket_config', 'guild_id', guildId, key, value);
+        }
+
+        resetTicketConfig(guildId) {
+            this.db.prepare('DELETE FROM ticket_config WHERE guild_id = ?').run(guildId);
+        }
+
+        // User data
+        upsertUserData(userId, data) {
+            this.db.prepare('INSERT INTO user_data (user_id, data, updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at')
+                .run(userId, JSON.stringify(data || {}), new Date().toISOString());
+        }
+
+        deleteUserData(userId) {
+            this.db.prepare('DELETE FROM user_data WHERE user_id = ?').run(userId);
+        }
+
+        // Warnings
+        addWarning(guildId, userId, moderatorId, reason) {
+            this.db.prepare('INSERT INTO warnings (guild_id, user_id, moderator_id, reason, created_at) VALUES (?,?,?,?,?)')
+                .run(guildId, userId, moderatorId, reason, new Date().toISOString());
+        }
+
+        getWarnings(guildId, userId) {
+            return this.db.prepare('SELECT * FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC').all(guildId, userId);
+        }
+
+        deleteWarning(warnId) {
+            this.db.prepare('DELETE FROM warnings WHERE id = ?').run(warnId);
+        }
+
+        getWarningCount(guildId, userId) {
+            return this.db.prepare('SELECT COUNT(*) as count FROM warnings WHERE guild_id = ? AND user_id = ?').get(guildId, userId).count;
+        }
+
+        // Guild config
+        getGuildConfig(guildId) {
+            return this._getConfig('guild_config', 'guild_id', guildId);
+        }
+
+        setGuildConfig(guildId, key, value) {
+            this._setConfig('guild_config', 'guild_id', guildId, key, value);
+        }
+
+        // Rank permissions
+        getRankPermission(guildId, roleId) {
+            return this.db.prepare('SELECT * FROM rank_permissions WHERE guild_id = ? AND role_id = ?').get(guildId, roleId);
+        }
+
+        getAllRankPermissions(guildId) {
+            return this.db.prepare('SELECT * FROM rank_permissions WHERE guild_id = ? ORDER BY position DESC').all(guildId);
+        }
+
+        setRankPermission(guildId, roleId, canGiveRoles, permissionType = 'hierarchy', position = 0) {
+            const rolesJson = JSON.stringify(canGiveRoles || []);
+            const existing = this.getRankPermission(guildId, roleId);
+
+            if (!existing) {
+                this.db.prepare('INSERT INTO rank_permissions (guild_id, role_id, can_give_roles, permission_type, position, updated_at) VALUES (?,?,?,?,?,?)')
+                    .run(guildId, roleId, rolesJson, permissionType, position, new Date().toISOString());
+            } else {
+                this.db.prepare('UPDATE rank_permissions SET can_give_roles = ?, permission_type = ?, position = ?, updated_at = ? WHERE guild_id = ? AND role_id = ?')
+                    .run(rolesJson, permissionType, position, new Date().toISOString(), guildId, roleId);
+            }
+        }
+
+        // Permission levels
+        getPermissionLevels(guildId) {
+            return this.db.prepare('SELECT * FROM permission_levels WHERE guild_id = ?').all(guildId);
+        }
+
+        addPermissionLevel(guildId, level, roleId) {
+            this.db.prepare('INSERT OR REPLACE INTO permission_levels (guild_id, level, role_id) VALUES (?, ?, ?)')
+                .run(guildId, level, roleId);
+        }
+
+        removePermissionLevel(guildId, level, roleId) {
+            this.db.prepare('DELETE FROM permission_levels WHERE guild_id = ? AND level = ? AND role_id = ?')
+                .run(guildId, level, roleId);
+        }
+
+        clearPermissionLevel(guildId, level) {
+            this.db.prepare('DELETE FROM permission_levels WHERE guild_id = ? AND level = ?')
+                .run(guildId, level);
+        }
+
+        deleteRankPermission(guildId, roleId) {
+            this.db.prepare('DELETE FROM rank_permissions WHERE guild_id = ? AND role_id = ?').run(guildId, roleId);
+        }
+
+        // Automod config
+        getAutomodConfig(guildId) {
+            return this._getConfig('automod_config', 'guild_id', guildId);
+        }
+
+        setAutomodConfig(guildId, key, value) {
+            this._setConfig('automod_config', 'guild_id', guildId, key, value);
+        }
+
+        // Logger channels
+        getLoggerChannels(guildId) {
+            return this._getConfig('logger_channels', 'guild_id', guildId);
+        }
+
+        setLoggerChannel(guildId, logType, channelId) {
+            const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log', 'automod_log'];
+            if (!validTypes.includes(logType)) throw new Error(`Invalid log type: ${logType}`);
+            this._setConfig('logger_channels', 'guild_id', guildId, logType, channelId);
+        }
+
+        removeLoggerChannel(guildId, logType) {
+            const validTypes = ['channel_log', 'emoji_log', 'ban_log', 'join_log', 'leave_log', 'message_log', 'voice_log', 'mod_log', 'automod_log'];
+            if (!validTypes.includes(logType)) throw new Error(`Invalid log type: ${logType}`);
+
+            // This is slightly different from _setConfig because it sets to NULL, so keeping specific logic is fine or could be genericized
+            this.db.prepare(`UPDATE logger_channels SET ${logType} = NULL, updated_at = ? WHERE guild_id = ?`)
+                .run(new Date().toISOString(), guildId);
+        }
+
+        // Rate State Persistence
+        getRaidState(guildId) {
+            return this.db.prepare('SELECT * FROM raid_states WHERE guild_id = ?').get(guildId);
+        }
+
+        setRaidState(guildId, isActive, quarantinedMembers = []) {
+            const membersJson = JSON.stringify(quarantinedMembers);
+            const existing = this.getRaidState(guildId);
+
+            if (!existing) {
+                this.db.prepare('INSERT INTO raid_states (guild_id, is_active, quarantined_members, started_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+                    .run(guildId, isActive ? 1 : 0, membersJson, isActive ? new Date().toISOString() : null, new Date().toISOString());
+            } else {
+                // Only update started_at if we are activating it and it wasn't valid before, otherwise keep original start time
+                const startedAt = isActive ? (existing.started_at || new Date().toISOString()) : null;
+                this.db.prepare('UPDATE raid_states SET is_active = ?, quarantined_members = ?, started_at = ?, updated_at = ? WHERE guild_id = ?')
+                    .run(isActive ? 1 : 0, membersJson, startedAt, new Date().toISOString(), guildId);
+            }
+        }
+
+        // Role Snapshots Persistence
+        saveRoleSnapshot(guildId, roleId, data) {
+            this.db.prepare('INSERT OR REPLACE INTO role_snapshots (guild_id, role_id, name, color, permissions, hoist, mentionable, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+                .run(guildId, roleId, data.name, data.color, data.permissions.toString(), data.hoist ? 1 : 0, data.mentionable ? 1 : 0, new Date().toISOString());
+        }
+
+        getRoleSnapshot(guildId, roleId) {
+            return this.db.prepare('SELECT * FROM role_snapshots WHERE guild_id = ? AND role_id = ?').get(guildId, roleId);
+        }
+
+        deleteRoleSnapshot(guildId, roleId) {
+            this.db.prepare('DELETE FROM role_snapshots WHERE guild_id = ? AND role_id = ?').run(guildId, roleId);
+        }
+
+        // Panic Backups
+        savePanicBackup(guildId, channelId, permissions) {
+            this.db.prepare('INSERT OR REPLACE INTO panic_backups (guild_id, channel_id, permissions, updated_at) VALUES (?, ?, ?, ?)')
+                .run(guildId, channelId, JSON.stringify(permissions), new Date().toISOString());
+        }
+
+        getPanicBackups(guildId) {
+            return this.db.prepare('SELECT * FROM panic_backups WHERE guild_id = ?').all(guildId);
+        }
+
+        clearPanicBackups(guildId) {
+            this.db.prepare('DELETE FROM panic_backups WHERE guild_id = ?').run(guildId);
+        }
+
+        close() {
+            if (this.db) {
+                this.db.close();
+                logger.info('SQLite database connection closed.');
+            }
+        }
+    }
+
+module.exports = new DB();

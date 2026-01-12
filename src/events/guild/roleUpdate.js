@@ -8,6 +8,12 @@ module.exports = {
     async execute(oldRole, newRole, client) {
         try {
             logger.info(`✏️ Rôle modifié: ${newRole.name} (${newRole.id})`);
+
+            // SECURITY CHECK (ROLE PROTECTION)
+            if (client.roleProtector) {
+                await client.roleProtector.onRoleUpdate(oldRole, newRole);
+            }
+
             if (client.logs) {
                 await client.logs.logRoles(newRole.guild, 'EDIT', { role: newRole, before: oldRole, after: newRole });
             }

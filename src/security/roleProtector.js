@@ -11,9 +11,6 @@ class RoleProtector {
     }
 
     init() {
-        this.client.on('roleUpdate', (oldRole, newRole) => this.onRoleUpdate(oldRole, newRole));
-        this.client.on('roleDelete', (role) => this.onRoleDelete(role));
-
         // Initial Sync
         this.client.guilds.cache.forEach(async guild => {
             await this.syncProtectedRoles(guild);

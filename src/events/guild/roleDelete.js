@@ -8,6 +8,12 @@ module.exports = {
     async execute(role, client) {
         try {
             logger.info(`🗑️ Rôle supprimé: ${role.name} (${role.id})`);
+
+            // SECURITY CHECK (ROLE PROTECTION)
+            if (client.roleProtector) {
+                await client.roleProtector.onRoleDelete(role);
+            }
+
             if (client.logs) {
                 await client.logs.logRoles(role.guild, 'REMOVE', { role });
             }

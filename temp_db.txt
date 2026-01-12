@@ -1,0 +1,70 @@
+    _runMigrations() {
+        try {
+            const migrations = [
+                {
+                    table: 'guild_config',
+                    column: 'embed_color',
+                    query: "ALTER TABLE guild_config ADD COLUMN embed_color TEXT DEFAULT '#FF69B4'"
+                },
+                {
+                    table: 'logger_channels',
+                    column: 'automod_log',
+                    query: "ALTER TABLE logger_channels ADD COLUMN automod_log TEXT"
+                },
+                // Ticket migrations handled as a block for simplicity
+                {
+                    table: 'automod_config',
+                    column: 'antiraid_threshold',
+                    query: "ALTER TABLE automod_config ADD COLUMN antiraid_threshold INTEGER DEFAULT 10"
+                },
+                {
+                    table: 'automod_config',
+                    column: 'antiraid_timeframe',
+                    query: "ALTER TABLE automod_config ADD COLUMN antiraid_timeframe INTEGER DEFAULT 10000"
+                },
+                {
+                    table: 'guild_config',
+                    column: 'quarantine_role_id',
+                    query: "ALTER TABLE guild_config ADD COLUMN quarantine_role_id TEXT"
+                },
+                {
+                    table: 'automod_config',
+                    column: 'antispam_threshold',
+                    query: "ALTER TABLE automod_config ADD COLUMN antispam_threshold INTEGER DEFAULT 5"
+                },
+                {
+                    table: 'automod_config',
+                    column: 'antispam_action',
+                    query: "ALTER TABLE automod_config ADD COLUMN antispam_action TEXT DEFAULT 'mute'"
+                },
+
+            // Ticket specific columns
+            const ticketsTableInfo = this.db.prepare("PRAGMA table_info(tickets)").all();
+            if (!ticketsTableInfo.some(col => col.name === 'claimed_by')) {
+                logger.info('Running migration: Adding new columns to tickets table');
+                const ticketCols = [
+                    "ALTER TABLE tickets ADD COLUMN claimed_by TEXT",
+                    "ALTER TABLE tickets ADD COLUMN topic TEXT",
+                    "ALTER TABLE tickets ADD COLUMN priority TEXT DEFAULT 'normal'",
+                    "ALTER TABLE tickets ADD COLUMN closed_at TEXT",
+                    "ALTER TABLE tickets ADD COLUMN closed_by TEXT"
+                ];
+                ticketCols.forEach(q => this.db.prepare(q).run());
+                logger.info('Migration completed: tickets table updated successfully');
+            }
+
+            // persistent_mutes table
+            this.db.prepare(`CREATE TABLE IF NOT EXISTS persistent_mutes (
+                guild_id TEXT,
+                user_id TEXT,
+                expires_at INTEGER,
+                PRIMARY KEY (guild_id, user_id)
+            )`).run();
+
+        } catch (err) {
+            logger.warn('Migration check/execution failed: ' + err.message);
+        }
+    }
+
+    // --- Generic Helpers ---
+

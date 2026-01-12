@@ -49,7 +49,11 @@ module.exports = {
 
             try {
                 if (message.member.moderatable) {
-                    await message.member.timeout(MUTE_DURATION, 'Anti-Spam: Envoi de messages trop rapide');
+                    if (client.muteService) {
+                        await client.muteService.mute(message.member, MUTE_DURATION, '[🛡️ UHQ SECURITY] Envoi excessif de messages (Anti-Spam).', client.user);
+                    } else {
+                        await message.member.timeout(MUTE_DURATION, '[🛡️ UHQ SECURITY] Envoi excessif de messages (Anti-Spam).');
+                    }
 
                     const embed = new EmbedBuilder()
                         .setColor('#FFA500')

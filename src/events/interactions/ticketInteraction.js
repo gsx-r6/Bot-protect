@@ -109,6 +109,12 @@ async function createTicket(interaction, client) {
         overwrites.push({ id: ticketConfig.staff_role, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
     }
 
+    // Permission Muted (Allow interaction in tickets)
+    const guildConfig = db.getGuildConfig(guild.id);
+    if (guildConfig && guildConfig.mute_role_id) {
+        overwrites.push({ id: guildConfig.mute_role_id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
+    }
+
     const parent = ticketConfig.category_id && guild.channels.cache.get(ticketConfig.category_id)?.type === ChannelType.GuildCategory
         ? ticketConfig.category_id
         : null;

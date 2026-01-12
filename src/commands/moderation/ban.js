@@ -57,8 +57,9 @@ module.exports = {
             }
 
             const banReason = args.slice(1).join(' ') || 'Aucune raison spécifiée';
+            const auditReason = `[🛡️ UHQ MODERATION] ${banReason} — par ${message.author.tag}`;
 
-            await target.ban({ reason: `${banReason} — par ${message.author.tag}` });
+            await target.ban({ reason: auditReason });
 
             // Log vers LogService
             if (client.logs) {

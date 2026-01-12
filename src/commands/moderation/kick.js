@@ -42,8 +42,9 @@ module.exports = {
             }
 
             const kickReason = args.slice(1).join(' ') || 'Aucune raison spécifiée';
+            const auditReason = `[🛡️ UHQ MODERATION] ${kickReason} — par ${message.author.tag}`;
 
-            await target.kick(kickReason);
+            await target.kick(auditReason);
 
             // Log vers LogService
             if (client.logs) {

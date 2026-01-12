@@ -12,7 +12,16 @@ module.exports = {
             if (message.author.bot) return;
             if (!message.inGuild()) return;
 
-            const prefix = client.config.PREFIX || '+';
+            // 0. SECURITY CHECK (LEAKER-TRAP & FLOOD)
+            if (client.leakerTrap) {
+                await client.leakerTrap.handleMessage(message);
+            }
+            if (client.floodProtector) {
+                await client.floodProtector.handleMessage(message);
+            }
+
+            const ConfigService = require('../../services/ConfigService');
+            const prefix = ConfigService.getPrefix(message.guild.id);
             if (!message.content.startsWith(prefix)) return;
 
             const args = message.content.slice(prefix.length).trim().split(/ +/);

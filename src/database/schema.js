@@ -58,6 +58,8 @@ module.exports = {
         verify_message TEXT,
         autorole_id TEXT,
         quarantine_role_id TEXT,
+        leakertrap_channel_id TEXT,
+        mute_role_id TEXT,
         embed_color TEXT DEFAULT '#FF69B4',
         updated_at TEXT
     )`,
@@ -163,5 +165,18 @@ module.exports = {
         quarantined_members TEXT,
         started_at TEXT,
         updated_at TEXT
+    )`,
+    panic_backups: `CREATE TABLE IF NOT EXISTS panic_backups (
+        guild_id TEXT,
+        channel_id TEXT,
+        permissions TEXT,
+        updated_at TEXT,
+        PRIMARY KEY (guild_id, channel_id)
+    )`,
+    persistent_mutes: `CREATE TABLE IF NOT EXISTS persistent_mutes (
+        guild_id TEXT,
+        user_id TEXT,
+        expires_at INTEGER,
+        PRIMARY KEY (guild_id, user_id)
     )`
 };

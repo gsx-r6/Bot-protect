@@ -57,7 +57,8 @@ module.exports = {
                         continue;
                     }
 
-                    await member.ban({ reason: `Massban par ${message.author.tag}: ${reason}` });
+                    const auditReason = `[🛡️ UHQ MODERATION - MASSBAN] ${reason} — par ${message.author.tag}`;
+                    await member.ban({ reason: auditReason });
                     banned++;
                 } catch (err) {
                     errors.push(`${member.user.tag}: ${err.message}`);

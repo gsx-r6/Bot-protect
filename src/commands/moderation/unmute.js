@@ -4,7 +4,7 @@ const PermissionHandler = require('../../utils/PermissionHandler');
 
 module.exports = {
     name: 'unmute',
-    description: 'Enlever le timeout d\'un membre',
+    description: 'Enlever le mute d\'un membre (Rôle ou Timeout)',
     category: 'moderation',
     aliases: ['untimeout'],
     cooldown: 3,
@@ -27,11 +27,26 @@ module.exports = {
                 return message.reply({ embeds: [embeds.error('Vous ne pouvez pas agir sur ce membre car il est supérieur ou égal à vous dans la hiérarchie.')] });
             }
 
-            if (!target.isCommunicationDisabled()) {
-                return message.reply({ embeds: [embeds.error('Ce membre n\'est pas en timeout.')] });
+            if (client.muteService) {
+                const result = await client.muteService.unmute(target, 'Unmute manuel', message.author);
+                if (!result.success) {
+                    // Fallback to timeout removal if role removal fails or if member was still under timeout
+                    if (target.isCommunicationDisabled()) {
+                        await target.timeout(null, `[🛡️ UHQ MODERATION] Unmute par: ${message.author.tag}`);
+                    } else {
+                        return message.reply({ embeds: [embeds.error(`Erreur unmute: ${result.error}`)] });
+                    }
+                }
+                // Even if role was removed, clear native timeout if present
+                if (target.isCommunicationDisabled()) {
+                    await target.timeout(null, `[🛡️ UHQ MODERATION] Unmute par: ${message.author.tag}`);
+                }
+            } else {
+                if (!target.isCommunicationDisabled()) {
+                    return message.reply({ embeds: [embeds.error('Ce membre n\'est pas en timeout.')] });
+                }
+                await target.timeout(null, `[🛡️ UHQ MODERATION] Unmute par: ${message.author.tag}`);
             }
-
-            await target.timeout(null, `Unmute par: ${message.author.tag}`);
 
             // Log vers LogService
             try {

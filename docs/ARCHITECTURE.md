@@ -32,6 +32,7 @@ L'architecture tend vers des commandes multifonctions pour simplifier l'interact
 - **`backup.js`** : Gère tout le cycle de vie des sauvegardes (`create`, `list`, `load`).
 - **`setlogger.js`** : Configuration interactive de toutes les catégories de logs.
 - **`clear.js`** : Commande haute performance de nettoyage incluant des fonctionnalités de purge avancées.
+- **`panic.js`** : Système d'urgence UHQ permettant un verrouillage parallèle instantané du serveur et une sauvegarde d'état.
 - **`lock.js` vs `lockdown.js`** : Distinction claire entre verrouillage de salon et verrouillage global.
 
 ### 2.4 Système de Tickets (`src/events/interactions/ticketInteraction.js`)
@@ -45,6 +46,7 @@ Le schéma est centralisé dans `src/database/schema.js`.
 | **`guild_config`** | Config générale du bot. | `guild_id` |
 | **`automod_config`** | Paramètres anti-raid/spam persistés par serveur. | `guild_id` |
 | **`logger_channels`** | Mapping des types de logs vers salons Discord. | `guild_id` |
+| **`panic_backups`** | Sauvegarde des permissions pré-panic pour restauration. | `guild_id` |
 | **`sanctions` / `warnings`** | Historique modération et accumulatif. | `id` |
 
 ## 4. Dettes Techniques & Risques

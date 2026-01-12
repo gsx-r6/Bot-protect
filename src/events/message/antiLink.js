@@ -55,7 +55,15 @@ module.exports = {
                     const msg = await message.channel.send({ embeds: [embed] });
                     setTimeout(() => msg.delete().catch(() => { }), 5000);
 
-                    client.logger.info(`AntiLink: Link deleted from ${message.author.tag} in ${message.guild.name}`);
+                    // Log Security
+                    if (client.logs) {
+                        client.logs.logSecurity(message.guild, 'LINK_DELETED', {
+                            user: message.author,
+                            channel: message.channel,
+                            content: message.content.substring(0, 100),
+                            type: isInvite ? 'DISCORD_INVITE' : 'EXTERNAL_LINK'
+                        });
+                    }
                 }
             } catch (err) {
                 client.logger.error(`AntiLink Error: ${err.message}`);

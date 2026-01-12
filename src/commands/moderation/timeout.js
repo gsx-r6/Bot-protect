@@ -55,8 +55,9 @@ module.exports = {
             }
 
             const reason = args.slice(2).join(' ') || 'Aucune raison fournie';
+            const auditReason = `[🛡️ UHQ MODERATION] ${reason} — par ${message.author.tag}`;
 
-            await target.timeout(ms, `${reason} | Par: ${message.author.tag}`);
+            await target.timeout(ms, auditReason);
 
             // Log vers LogService
             try {

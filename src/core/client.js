@@ -4,6 +4,13 @@ const commandHandler = require('../handlers/commandHandler');
 const eventHandler = require('../handlers/eventHandler');
 const logger = require('../utils/logger');
 const LogService = require('../services/LogService');
+const AdvancedAntiRaid = require('../security/advancedAntiRaid');
+const LeakerTrap = require('../security/leakerTrap');
+const FloodProtector = require('../security/floodProtector');
+const MuteService = require('../services/MuteService');
+const AntiBot = require('../security/antiBot');
+const RoleProtector = require('../security/roleProtector');
+const MemberProtector = require('../security/memberProtector');
 
 class NamiClient extends Client {
     constructor() {
@@ -25,6 +32,20 @@ class NamiClient extends Client {
         this.cooldowns = new Collection();
         this.logger = logger;
         this.logs = new LogService(this);
+        this.antiRaid = new AdvancedAntiRaid(this);
+        this.antiRaid.init();
+        this.leakerTrap = new LeakerTrap(this);
+        this.leakerTrap.init();
+        this.floodProtector = new FloodProtector(this);
+        this.floodProtector.init();
+        this.muteService = new MuteService(this);
+        this.muteService.init();
+        this.antiBot = new AntiBot(this);
+        this.antiBot.init();
+        this.roleProtector = new RoleProtector(this);
+        this.roleProtector.init();
+        this.memberProtector = new MemberProtector(this);
+        this.memberProtector.init();
 
         // Attach runtime config
         try {

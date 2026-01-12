@@ -10,8 +10,9 @@
 ## 🚀 Fonctionnalités Clés
 
 ### 🔒 Sécurité & Protection (UHQ Ready)
-- **Anti-Raid Résilient** : Détecte les arrivées massives. L'état persiste après redémarrage (Timing conservé).
-- **Protecteur de Rôles Persistant** : Sauvegarde SQLite des snapshots de rôles critiques. Restauration post-reboot automatique.
+- **Panic Button (URGENCE)** : Verrouillage total et instantané du serveur en une commande (`+panic`).
+- **Anti-Raid Résilient** : Détecte les arrivées massives. L'état persiste après redémarrage.
+- **Protecteur de Rôles Persistant** : Sauvegarde SQLite des snapshots de rôles critiques.
 - **Systeme de Vérification** : Bouton sécurisé avec barrière anti-bypass pour les membres suspects.
 
 ### ⚙️ Modération & Gestion (Consolidée)

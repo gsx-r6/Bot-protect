@@ -9,8 +9,7 @@ class AntiBot {
     }
 
     init() {
-        this.client.on('guildMemberAdd', (member) => this.onMemberAdd(member));
-        logger.info('AntiBot initialized with enforcement enabled');
+        logger.info('AntiBot initialized (Stand-alone mode)');
     }
 
     async onMemberAdd(member) {

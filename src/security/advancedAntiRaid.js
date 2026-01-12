@@ -10,12 +10,36 @@ class AdvancedAntiRaid {
         this.client = client;
         this.joinCache = new Map();
         this.suspiciousPatterns = new Map();
+        this.raidMode = new Map();
         this.cleanupInterval = null;
     }
 
     init() {
         this.cleanupInterval = setInterval(() => this.cleanup(), 60000);
-        logger.info('AdvancedAntiRaid initialized with periodic cleanup');
+
+        // Restore Raid State from DB
+        if (this.client.guilds) {
+            this.client.guilds.cache.forEach(guild => {
+                const state = db.getRaidState(guild.id);
+                if (state && state.is_active) {
+                    const startedAt = new Date(state.started_at).getTime();
+                    const now = Date.now();
+                    const raidDuration = 10 * 60 * 1000; // 10 minutes par défaut pour le panic/raid
+                    const elapsed = now - startedAt;
+                    const remaining = raidDuration - elapsed;
+
+                    if (remaining > 0) {
+                        logger.warn(`[AdvancedAntiRaid] Restoring active RAID MODE for ${guild.name}. Remaining: ${Math.round(remaining / 1000)}s`);
+                        this.raidMode.set(guild.id, true);
+                        setTimeout(() => this.deactivateRaidMode(guild), remaining);
+                    } else {
+                        db.setRaidState(guild.id, false);
+                    }
+                }
+            });
+        }
+
+        logger.info('AdvancedAntiRaid initialized with periodic cleanup and state restoration');
     }
 
     destroy() {
@@ -39,8 +63,8 @@ class AdvancedAntiRaid {
         logger.debug(`[Anti-Raid] ${member.user.tag} - Suspicion: ${suspicionScore}, Raid: ${isRaid}`);
 
         // Si raid détecté OU membre très suspect
-        if (isRaid || suspicionScore >= 3) {
-            await this.quarantineMember(member, suspicionScore, isRaid);
+        if (isRaid || suspicionScore >= 3 || this.raidMode.get(guild.id)) {
+            await this.quarantineMember(member, suspicionScore, isRaid || this.raidMode.get(guild.id));
             return true;
         }
 
@@ -50,6 +74,47 @@ class AdvancedAntiRaid {
         }
 
         return false;
+    }
+
+    /**
+     * Déclencheur manuel (Panic Button)
+     */
+    async forceRaidMode(guild) {
+        if (this.raidMode.get(guild.id)) return;
+        await this.activateRaidMode(guild, "DÉCLENCHEMENT MANUEL (PANIC)");
+    }
+
+    async activateRaidMode(guild, reason = "RAID DÉTECTÉ") {
+        const guildId = guild.id;
+        if (this.raidMode.get(guildId)) return;
+
+        this.raidMode.set(guildId, true);
+        db.setRaidState(guildId, true);
+        logger.warn(`[AdvancedAntiRaid] RAID MODE ACTIVATED in ${guild.name}: ${reason}`);
+
+        // Notification Automod
+        const logChannels = db.getLoggerChannels(guildId);
+        if (logChannels?.automod_log) {
+            const logChannel = guild.channels.cache.get(logChannels.automod_log);
+            if (logChannel) {
+                const embed = new EmbedBuilder()
+                    .setColor('#FF0000')
+                    .setTitle('🚨 MODE RAID ACTIVÉ')
+                    .setDescription(reason === "DÉCLENCHEMENT MANUEL (PANIC)" ? "Le mode raid a été activé manuellement via le Panic Button." : "Le système a détecté un raid et a activé le mode protection.")
+                    .setTimestamp();
+                await logChannel.send({ embeds: [embed] });
+            }
+        }
+
+        // Deactivation automatique après 10 minutes
+        setTimeout(() => this.deactivateRaidMode(guild), 10 * 60 * 1000);
+    }
+
+    async deactivateRaidMode(guild) {
+        if (!this.raidMode.get(guild.id)) return;
+        this.raidMode.set(guild.id, false);
+        db.setRaidState(guild.id, false);
+        logger.info(`[AdvancedAntiRaid] Raid mode deactivated for ${guild.name}`);
     }
 
     /**

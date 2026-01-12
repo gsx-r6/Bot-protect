@@ -5,7 +5,7 @@ const embeds = require('../../utils/embeds');
 
 module.exports = {
     name: 'mute',
-    description: 'Rendre muet un membre (timeout)',
+    description: 'Rendre muet un membre (Rôle persistant)',
     category: 'moderation',
     permissions: [PermissionFlagsBits.ModerateMembers],
     cooldown: 3,
@@ -46,7 +46,15 @@ module.exports = {
 
             const reasonText = args.slice(2).join(' ') || 'Aucune raison spécifiée';
 
-            await target.timeout(durationMs, `${reasonText} — par ${message.author.tag}`);
+            if (client.muteService) {
+                const muteResult = await client.muteService.mute(target, durationMs, reasonText, message.author);
+                if (!muteResult.success) {
+                    return message.reply({ embeds: [embeds.error(`Erreur: ${muteResult.error}`)] });
+                }
+            } else {
+                const auditReason = `[🛡️ UHQ MODERATION] ${reasonText} — par ${message.author.tag}`;
+                await target.timeout(durationMs, auditReason);
+            }
 
             // Log vers LogService
             if (client.logs) {

@@ -9,8 +9,7 @@ class MemberProtector {
     }
 
     init() {
-        this.client.on('guildMemberUpdate', (oldMember, newMember) => this.onMemberUpdate(oldMember, newMember));
-        logger.info('MemberProtector initialized with enforcement enabled');
+        logger.info('MemberProtector initialized (Stand-alone mode)');
     }
 
     async onMemberUpdate(oldMember, newMember) {

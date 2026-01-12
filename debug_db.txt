@@ -1,0 +1,50 @@
+﻿const path = require('path');
+const fs = require('fs');
+const Database = require('better-sqlite3');
+const logger = require('../utils/logger');
+const schema = require('./schema');
+
+class DB {
+    constructor() {
+        const dbPath = process.env.SQLITE_PATH || path.join(process.cwd(), 'data', 'nami.db');
+        const dir = path.dirname(dbPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+        try {
+            this.db = new Database(dbPath);
+            logger.info(`SQLite DB opened at ${dbPath}`);
+            this._init();
+        } catch (error) {
+            logger.error(`Failed to open database at ${dbPath}:`, error);
+            process.exit(1);
+        }
+    }
+
+    _init() {
+        try {
+            // Load all tables from schema
+            for (const [tableName, createQuery] of Object.entries(schema)) {
+                this.db.prepare(createQuery).run();
+            }
+            this._runMigrations();
+        } catch (error) {
+            logger.error('Database initialization failed:', error);
+            throw error;
+        }
+    }
+
+
+    // --- Generic Helpers ---
+
+    /**
+     * Generic method to get configuration
+     * @param {string} table Name of the table
+     * @param {string} keyColumn Name of the primary key column (e.g., 'guild_id')
+     * @param {string} keyValue Value of the primary key
+     */
+    _getConfig(table, keyColumn, keyValue) {
+        try {
+            return this.db.prepare(`SELECT * FROM ${table} WHERE ${keyColumn} = ?`).get(keyValue);
+        } catch (error) {
+            logger.error(`Error fetching config from ${table}:`, error);
+            return null;

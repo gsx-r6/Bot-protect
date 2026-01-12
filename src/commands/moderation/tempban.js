@@ -44,6 +44,7 @@ module.exports = {
             }
 
             const reason = args.slice(2).join(' ') || 'Aucune raison fournie';
+            const auditReason = `[🛡️ UHQ MODERATION - TEMPBAN ${duration}] ${reason} — par ${message.author.tag}`;
 
             try {
                 await target.send({
@@ -59,7 +60,7 @@ module.exports = {
                 // Impossible d'envoyer un MP
             }
 
-            await target.ban({ reason: `[TEMPBAN ${duration}] ${reason} | Par: ${message.author.tag}`, deleteMessageSeconds: 86400 });
+            await target.ban({ reason: auditReason, deleteMessageSeconds: 86400 });
 
             // Log vers LogService
             try {

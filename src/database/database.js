@@ -46,7 +46,6 @@ class DB {
                     column: 'automod_log',
                     query: "ALTER TABLE logger_channels ADD COLUMN automod_log TEXT"
                 },
-                // Ticket migrations handled as a block for simplicity
                 {
                     table: 'automod_config',
                     column: 'antiraid_threshold',
@@ -79,21 +78,25 @@ class DB {
                 },
                 {
                     table: 'guild_config',
-                    column: 'verify_role_id',
-                    query: "ALTER TABLE guild_config ADD COLUMN verify_role_id TEXT"
+                    column: 'leakertrap_channel_id',
+                    query: "ALTER TABLE guild_config ADD COLUMN leakertrap_channel_id TEXT"
                 },
                 {
                     table: 'guild_config',
-                    column: 'verify_message',
-                    query: "ALTER TABLE guild_config ADD COLUMN verify_message TEXT"
+                    column: 'mute_role_id',
+                    query: "ALTER TABLE guild_config ADD COLUMN mute_role_id TEXT"
                 }
             ];
 
             for (const migration of migrations) {
-                const tableInfo = this.db.prepare(`PRAGMA table_info(${migration.table})`).all();
-                if (!tableInfo.some(col => col.name === migration.column)) {
-                    logger.info(`Running migration: Adding ${migration.column} to ${migration.table}`);
-                    this.db.prepare(migration.query).run();
+                try {
+                    const tableInfo = this.db.prepare(`PRAGMA table_info(${migration.table})`).all();
+                    if (!tableInfo.some(col => col.name === migration.column)) {
+                        logger.info(`Running migration: Adding ${migration.column} to ${migration.table}`);
+                        this.db.prepare(migration.query).run();
+                    }
+                } catch (migrationError) {
+                    logger.error(`Migration failed for ${migration.table}.${migration.column}:`, migrationError);
                 }
             }
 
@@ -111,6 +114,14 @@ class DB {
                 ticketCols.forEach(q => this.db.prepare(q).run());
                 logger.info('Migration completed: tickets table updated successfully');
             }
+
+            // New tables
+            this.db.prepare(`CREATE TABLE IF NOT EXISTS persistent_mutes (
+                guild_id TEXT,
+                user_id TEXT,
+                expires_at INTEGER,
+                PRIMARY KEY (guild_id, user_id)
+            )`).run();
 
         } catch (err) {
             logger.warn('Migration check/execution failed: ' + err.message);
@@ -200,6 +211,15 @@ class DB {
             total: this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ?').get(guildId).count,
             open: this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?').get(guildId, 'open').count,
             closed: this.db.prepare('SELECT COUNT(*) as count FROM tickets WHERE guild = ? AND status = ?').get(guildId, 'closed').count
+        };
+    }
+
+    getSecurityStats(guildId) {
+        return {
+            bans: this.db.prepare('SELECT COUNT(*) as count FROM sanctions WHERE guild = ? AND type = ?').get(guildId, 'BAN')?.count || 0,
+            warnings: this.db.prepare('SELECT COUNT(*) as count FROM warnings WHERE guild_id = ?').get(guildId)?.count || 0,
+            activeRaid: this.db.prepare('SELECT is_active FROM raid_states WHERE guild_id = ?').get(guildId)?.is_active || 0,
+            kick: this.db.prepare('SELECT COUNT(*) as count FROM sanctions WHERE guild = ? AND type = ?').get(guildId, 'KICK')?.count || 0,
         };
     }
 
@@ -362,6 +382,38 @@ class DB {
 
     deleteRoleSnapshot(guildId, roleId) {
         this.db.prepare('DELETE FROM role_snapshots WHERE guild_id = ? AND role_id = ?').run(guildId, roleId);
+    }
+
+    // Panic Backups
+    savePanicBackup(guildId, channelId, permissions) {
+        this.db.prepare('INSERT OR REPLACE INTO panic_backups (guild_id, channel_id, permissions, updated_at) VALUES (?, ?, ?, ?)')
+            .run(guildId, channelId, JSON.stringify(permissions), new Date().toISOString());
+    }
+
+    getPanicBackups(guildId) {
+        return this.db.prepare('SELECT * FROM panic_backups WHERE guild_id = ?').all(guildId);
+    }
+
+    clearPanicBackups(guildId) {
+        this.db.prepare('DELETE FROM panic_backups WHERE guild_id = ?').run(guildId);
+    }
+
+    // New Mute Logic
+    getPersistentMute(guildId, userId) {
+        return this.db.prepare('SELECT * FROM persistent_mutes WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+    }
+
+    getAllPersistentMutes() {
+        return this.db.prepare('SELECT * FROM persistent_mutes').all();
+    }
+
+    addPersistentMute(guildId, userId, expiresAt) {
+        this.db.prepare('INSERT OR REPLACE INTO persistent_mutes (guild_id, user_id, expires_at) VALUES (?, ?, ?)')
+            .run(guildId, userId, expiresAt);
+    }
+
+    removePersistentMute(guildId, userId) {
+        this.db.prepare('DELETE FROM persistent_mutes WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
     }
 
     close() {
