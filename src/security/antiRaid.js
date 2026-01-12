@@ -22,10 +22,20 @@ class AntiRaid {
             if (state && state.is_active) {
                 const guild = this.client.guilds.cache.get(guildId);
                 if (guild) {
-                    logger.warn(`[AntiRaid] Restoring active RAID MODE for ${guild.name}`);
-                    this.raidMode.set(guildId, true);
-                    // Deactivate after remaining time (assuming 5 min default window, this is simple recovery)
-                    setTimeout(() => this.deactivateRaidMode(guild), 5 * 60 * 1000);
+                    const startedAt = new Date(state.started_at).getTime();
+                    const now = Date.now();
+                    const raidDuration = 5 * 60 * 1000; // 5 minutes
+                    const elapsed = now - startedAt;
+                    const remaining = raidDuration - elapsed;
+
+                    if (remaining > 0) {
+                        logger.warn(`[AntiRaid] Restoring active RAID MODE for ${guild.name}. Remaining: ${Math.round(remaining / 1000)}s`);
+                        this.raidMode.set(guildId, true);
+                        setTimeout(() => this.deactivateRaidMode(guild), remaining);
+                    } else {
+                        // Raid expired while bot was offline
+                        this.deactivateRaidMode(guild);
+                    }
                 }
             }
         }
@@ -66,7 +76,7 @@ class AntiRaid {
         if (this.raidMode.get(guildId)) return;
 
         this.raidMode.set(guildId, true);
-        
+
         // PERSISTENCE: Save both the active state AND the list of suspected member IDs
         const memberIds = recentJoins.map(j => j.memberId);
         db.setRaidState(guildId, true, memberIds);

@@ -9,10 +9,10 @@
 
 ## 🚀 Fonctionnalités Clés
 
-### 🔒 Sécurité & Protection
-- **Anti-Raid** : Détecte les arrivées massives basées sur des seuils dynamiques configurables en temps réel.
-- **Protecteur de Rôles** : Surveillance active de l'intégrité des rôles critiques (Snapshots et Rollbacks automatiques).
-- **Anti-Spam** : Filtrage dynamique avec paramètres persistés en base de données.
+### 🔒 Sécurité & Protection (UHQ Ready)
+- **Anti-Raid Résilient** : Détecte les arrivées massives. L'état persiste après redémarrage (Timing conservé).
+- **Protecteur de Rôles Persistant** : Sauvegarde SQLite des snapshots de rôles critiques. Restauration post-reboot automatique.
+- **Systeme de Vérification** : Bouton sécurisé avec barrière anti-bypass pour les membres suspects.
 
 ### ⚙️ Modération & Gestion (Consolidée)
 - **Modération UX** : Commandes simplifiées comme `+clear` (incluant purge avancée) et distinction entre `+lock` (salon) et `+lockdown` (serveur).

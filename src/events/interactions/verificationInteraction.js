@@ -23,14 +23,20 @@ module.exports = {
                 return interaction.reply({ content: "Vous êtes déjà vérifié !", ephemeral: true });
             }
 
+            // Security Check: Is the user quarantined?
+            if (config.quarantine_role_id && interaction.member.roles.cache.has(config.quarantine_role_id)) {
+                return interaction.reply({ content: "❌ Vous êtes actuellement en quarantaine de sécurité. Veuillez attendre la fin du raid ou une vérification manuelle par le staff.", ephemeral: true });
+            }
+
             await interaction.member.roles.add(role);
-            
-            // Log if security channel exists
-            if (config.log_channel) {
-                const logChannel = interaction.guild.channels.cache.get(config.log_channel);
-                if (logChannel) {
-                    logChannel.send({ content: `✅ **${interaction.user.tag}** s'est vérifié.` }).catch(() => {});
-                }
+
+            // Log via LogService
+            if (client.logs) {
+                await client.logs.logSecurity(interaction.guild, 'VÉRIFICATION', {
+                    user: interaction.user,
+                    description: 'Utilisateur vérifié via le bouton',
+                    severity: 'INFO'
+                });
             }
 
             return interaction.reply({ content: "Vous avez été vérifié avec succès ! Accès accordé.", ephemeral: true });

@@ -24,8 +24,8 @@ graph TD
 - **`AutomodService`** : Gère les seuils et paramètres de l'anti-raid et anti-spam en base de données.
 
 ### 2.2 Module de Sécurité (`src/security/`)
-- **`RoleProtector`** : Surveille les événements `roleUpdate`/`roleDelete`. Restaure les permissions critiques via snapshots si modifiées indûment.
-- **`AntiRaid` / `AntiSpam`** : Détectent les pics d'arrivées ou d'envois. Paramètres désormais persistés en base de données (`automod_config.antispam_timeframe`).
+- **`RoleProtector`** : Surveille les événements `roleUpdate`/`roleDelete`. Restaure les permissions critiques via snapshots. Les snapshots sont désormais **persistants en base de données** (`role_snapshots`), garantissant une restauration immédiate même après un reboot.
+- **`AntiRaid` / `AntiSpam`** : Détectent les pics d'arrivées ou d'envois. Le mode raid utilise un timestamp de début persistant (`raid_states`) pour assurer une continuité de protection précise après redémarrage.
 
 ### 2.3 Commandes Consolidées (`src/commands/`)
 L'architecture tend vers des commandes multifonctions pour simplifier l'interaction :
@@ -48,9 +48,9 @@ Le schéma est centralisé dans `src/database/schema.js`.
 | **`sanctions` / `warnings`** | Historique modération et accumulatif. | `id` |
 
 ## 4. Dettes Techniques & Risques
-1. **Snapshots Rôles** : Toujours en mémoire. Résilience au redémarrage à améliorer.
-2. **Couplage Services** : Certains services dépendent encore de structures globales du client.
+1. **Couplage Services** : Certains services dépendent encore de structures globales du client.
+2. **Audit Logs** : Dépendance aux Audit Logs Discord pour identifier les exécuteurs, ce qui peut être sujet à des délais.
 
 ## 5. Recommandations (Futur)
-1. **Snapshot Persistence** : Stocker les snapshots de rôles en DB pour une protection post-redémarrage.
-2. **Modularité** : Séparer davantage les handlers de commandes pour supporter l'auto-complétion Slash.
+1. **Modularité** : Séparer davantage les handlers de commandes pour supporter l'auto-complétion Slash.
+2. **Dashboard de Secours** : Envisager une interface légère pour le monitoring hors-Discord.

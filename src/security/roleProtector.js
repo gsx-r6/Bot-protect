@@ -48,9 +48,23 @@ class RoleProtector {
             // Hydrate Snapshots for new roles
             for (const roleId of protectedSet) {
                 if (!this.roleSnapshots.has(roleId)) {
-                    const role = guild.roles.cache.get(roleId);
-                    if (role) {
-                        this.takeSnapshot(role);
+                    // Try to load from DB first
+                    const dbSnapshot = db.getRoleSnapshot(guild.id, roleId);
+                    if (dbSnapshot) {
+                        this.roleSnapshots.set(roleId, {
+                            name: dbSnapshot.name,
+                            color: dbSnapshot.color,
+                            permissions: BigInt(dbSnapshot.permissions),
+                            hoist: dbSnapshot.hoist === 1,
+                            mentionable: dbSnapshot.mentionable === 1
+                        });
+                        logger.debug(`[RoleProtector] Loaded snapshot for ${dbSnapshot.name} from DB`);
+                    } else {
+                        // Fallback: take fresh snapshot from cache
+                        const role = guild.roles.cache.get(roleId);
+                        if (role) {
+                            this.takeSnapshot(role);
+                        }
                     }
                 }
             }
@@ -209,7 +223,11 @@ class RoleProtector {
             // Update internal state
             guildProtected.delete(role.id);
             guildProtected.add(newRole.id);
+
+            // Important: Delete old snapshot from DB and Memory
             this.roleSnapshots.delete(role.id);
+            db.deleteRoleSnapshot(role.guild.id, role.id);
+
             this.takeSnapshot(newRole);
 
             const logChannels = db.getLoggerChannels(role.guild.id);
@@ -252,13 +270,19 @@ class RoleProtector {
     }
 
     takeSnapshot(role) {
-        this.roleSnapshots.set(role.id, {
+        const snapshot = {
             name: role.name,
             color: role.color,
             permissions: role.permissions.bitfield,
             hoist: role.hoist,
             mentionable: role.mentionable
-        });
+        };
+
+        this.roleSnapshots.set(role.id, snapshot);
+
+        // Persistent Save
+        db.saveRoleSnapshot(role.guild.id, role.id, snapshot);
+        logger.debug(`[RoleProtector] Snapshot saved to DB for role ${role.name}`);
     }
 
     destroy() {
