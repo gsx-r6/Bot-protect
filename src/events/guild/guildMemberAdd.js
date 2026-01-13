@@ -31,6 +31,21 @@ module.exports = {
                 }
             }
 
+            // 1.1 TRUST-SCORE ANALYSIS
+            if (client.trustScore) {
+                const score = await client.trustScore.getScore(member);
+                const trustConfig = db.getTrustConfig(member.guild.id) || { quarantine_threshold: 10 };
+
+                if (score < trustConfig.quarantine_threshold) {
+                    // Critical risk: apply quarantine even if anti-raid missed it (e.g., account age < 24h)
+                    if (client.antiRaid && typeof client.antiRaid.quarantineMember === 'function') {
+                        await client.antiRaid.quarantineMember(member, `Score de confiance critique : ${score}/100`);
+                        logger.warn(`[TrustScore] ${member.user.tag} mis en quarantaine (Score: ${score})`);
+                        return;
+                    }
+                }
+            }
+
             // 1.5 PERSISTENT MUTE RESTORATION
             if (client.muteService) {
                 const muteData = db.getPersistentMute(member.guild.id, member.id);

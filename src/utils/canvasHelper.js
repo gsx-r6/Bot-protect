@@ -10,9 +10,6 @@ try {
     logger.warn('Module @napi-rs/canvas manquant ou erreur de chargement. Le système de bienvenue utilisera le fallback Embed.');
 }
 
-// Enregistrer une police par défaut si disponible (sinon utilise system fonts)
-// GlobalFonts.registerFromPath(path.join(__dirname, '..', '..', 'assets', 'fonts', 'Roboto-Bold.ttf'), 'Roboto');
-
 module.exports = {
     /**
      * Génère une image de bienvenue UHQ
@@ -33,7 +30,6 @@ module.exports = {
             const memberCount = member.guild.memberCount;
 
             // --- 1. FOND (BACKGROUND) ---
-            // Dégradé sombre premium
             const gradient = ctx.createLinearGradient(0, 0, width, height);
             gradient.addColorStop(0, '#0f0c29');
             gradient.addColorStop(0.5, '#302b63');
@@ -41,7 +37,6 @@ module.exports = {
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, width, height);
 
-            // Cercles décoratifs (Glow effect)
             ctx.globalAlpha = 0.1;
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
@@ -52,21 +47,18 @@ module.exports = {
             ctx.fill();
             ctx.globalAlpha = 1;
 
-            // --- 2. CADRE & BORDURES ---
-            // Bordure rectangulaire arrondie
+            // --- 2. CADRE ---
             const margin = 20;
-            const cornerRadius = 40;
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 5;
             ctx.lineJoin = 'round';
             ctx.strokeRect(margin, margin, width - margin * 2, height - margin * 2);
 
-            // --- 3. AVATAR CIRCULAIRE ---
+            // --- 3. AVATAR ---
             const avatarSize = 250;
             const avatarX = width / 2;
             const avatarY = height / 2 - 50;
 
-            // Cercle de contour avatar (Glow)
             ctx.save();
             ctx.beginPath();
             ctx.arc(avatarX, avatarY, avatarSize / 2 + 10, 0, Math.PI * 2);
@@ -76,53 +68,122 @@ module.exports = {
             ctx.fill();
             ctx.restore();
 
-            // Masque circulaire pour l'avatar
+            ctx.save();
             ctx.beginPath();
             ctx.arc(avatarX, avatarY, avatarSize / 2, 0, Math.PI * 2);
-            ctx.closePath();
             ctx.clip();
 
-            // Charger et dessiner l'avatar
             try {
                 const avatarImage = await loadImage(avatarUrl);
                 ctx.drawImage(avatarImage, avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize);
             } catch (e) {
-                // Fallback si échec (avatar par défaut coloré)
                 ctx.fillStyle = '#7289da';
                 ctx.fillRect(avatarX - avatarSize / 2, avatarY - avatarSize / 2, avatarSize, avatarSize);
             }
-
-            // Restore contexte après clip
             ctx.restore();
-            // Note: avec @napi-rs/canvas, restore peut être tricky si on a pas save avant le clip. 
-            // Correctif simple: on recrée le canvas context ou on gère mieux le save/restore.
-            // Ici, on a pas fait ctx.save() avant le clip de l'avatar dans ce bloc simplifié. 
-            // RE-INITIALISATION DU CONTEXTE (Hack simple: continuer à dessiner par dessus)
 
             // --- 4. TEXTES ---
             ctx.textAlign = 'center';
-
-            // Titre "BIENVENUE"
-            ctx.font = 'bold 60px "Arial"'; // Utiliser Arial par défaut si pas de custom font
+            ctx.font = 'bold 60px "Arial"';
             ctx.fillStyle = '#ffffff';
             ctx.shadowColor = 'black';
             ctx.shadowBlur = 10;
             ctx.fillText('BIENVENUE', width / 2, height - 130);
 
-            // Username
             ctx.font = 'bold 45px "Arial"';
-            ctx.fillStyle = '#00d2ff'; // Cyan
+            ctx.fillStyle = '#00d2ff';
             ctx.fillText(username.toUpperCase(), width / 2, height - 70);
 
-            // Compteur de membres
             ctx.font = 'bold 30px "Arial"';
             ctx.fillStyle = '#cccccc';
             ctx.fillText(`Membre #${memberCount}`, width / 2, height - 30);
 
             return canvas.toBuffer('image/png');
-
         } catch (err) {
             logger.error('Canvas Error:', err);
+            return null;
+        }
+    },
+
+    /**
+     * Génère une jauge de TrustScore UHQ
+     * @param {number} score - Le score (0-100)
+     * @returns {Promise<Buffer>} - L'image générée
+     */
+    async generateTrustGauge(score) {
+        if (!createCanvas) return null;
+
+        try {
+            const width = 600;
+            const height = 150;
+            const canvas = createCanvas(width, height);
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#1e1e2e';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(0, 0, width, height, 20);
+            } else {
+                ctx.rect(0, 0, width, height);
+            }
+            ctx.fill();
+
+            const barX = 50;
+            const barY = 60;
+            const barWidth = 500;
+            const barHeight = 30;
+
+            ctx.fillStyle = '#313244';
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(barX, barY, barWidth, barHeight, 15);
+            } else {
+                ctx.rect(barX, barY, barWidth, barHeight);
+            }
+            ctx.fill();
+
+            let color1, color2;
+            if (score < 20) { color1 = '#f38ba8'; color2 = '#eba0ac'; }
+            else if (score < 50) { color1 = '#fab387'; color2 = '#f9e2af'; }
+            else { color1 = '#a6e3a1'; color2 = '#94e2d5'; }
+
+            const fillGradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
+            fillGradient.addColorStop(0, color1);
+            fillGradient.addColorStop(1, color2);
+
+            const currentWidth = (score / 100) * barWidth;
+            if (currentWidth > 0) {
+                ctx.fillStyle = fillGradient;
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(barX, barY, currentWidth, barHeight, 15);
+                } else {
+                    ctx.rect(barX, barY, currentWidth, barHeight);
+                }
+                ctx.fill();
+            }
+
+            ctx.fillStyle = '#cdd6f4';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('Confiance :', barX, 45);
+
+            ctx.textAlign = 'right';
+            ctx.fillText(`${score}/100`, barX + barWidth, 45);
+
+            let levelText = 'CRITIQUE';
+            if (score >= 80) levelText = 'ELITE';
+            else if (score >= 50) levelText = 'FIABLE';
+            else if (score >= 30) levelText = 'SUSPECT';
+
+            ctx.font = 'italic 20px Arial';
+            ctx.fillStyle = color1;
+            ctx.textAlign = 'center';
+            ctx.fillText(levelText, width / 2, barY + barHeight + 35);
+
+            return canvas.toBuffer('image/png');
+        } catch (err) {
+            logger.error('Trust Gauge Canvas Error:', err);
             return null;
         }
     }

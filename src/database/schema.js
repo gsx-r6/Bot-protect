@@ -37,6 +37,47 @@ module.exports = {
         updated_at TEXT
     )`,
 
+    ticket_categories: `CREATE TABLE IF NOT EXISTS ticket_categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT,
+        name TEXT,
+        label TEXT,
+        emoji TEXT,
+        description TEXT,
+        staff_role_id TEXT,
+        category_id TEXT,
+        created_at TEXT
+    )`,
+
+    trust_scores: `CREATE TABLE IF NOT EXISTS trust_scores (
+        guild_id TEXT,
+        user_id TEXT,
+        score INTEGER DEFAULT 50,
+        activity_points INTEGER DEFAULT 0,
+        last_message_at TEXT,
+        global_malus INTEGER DEFAULT 0,
+        updated_at TEXT,
+        PRIMARY KEY (guild_id, user_id)
+    )`,
+
+    trust_config: `CREATE TABLE IF NOT EXISTS trust_config (
+        guild_id TEXT PRIMARY KEY,
+        min_score_link INTEGER DEFAULT 30,
+        min_score_media INTEGER DEFAULT 20,
+        quarantine_threshold INTEGER DEFAULT 10,
+        auto_restriction_enabled INTEGER DEFAULT 1,
+        updated_at TEXT
+    )`,
+
+    trust_history: `CREATE TABLE IF NOT EXISTS trust_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        guild_id TEXT,
+        user_id TEXT,
+        change_amount INTEGER,
+        reason TEXT,
+        timestamp TEXT
+    )`,
+
     user_data: `CREATE TABLE IF NOT EXISTS user_data (
         id INTEGER PRIMARY KEY,
         user_id TEXT UNIQUE,

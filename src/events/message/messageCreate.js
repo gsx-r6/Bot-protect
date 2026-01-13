@@ -20,6 +20,13 @@ module.exports = {
                 await client.floodProtector.handleMessage(message);
             }
 
+            // 0.1 TRUST-SCORE ACTIVITY & RESTRICTIONS
+            if (client.trustScore) {
+                const isRestricted = await client.trustScore.checkRestrictions(message);
+                if (isRestricted) return; // Stop processing if message was deleted/restricted
+                await client.trustScore.addActivity(message);
+            }
+
             const ConfigService = require('../../services/ConfigService');
             const prefix = ConfigService.getPrefix(message.guild.id);
             if (!message.content.startsWith(prefix)) return;

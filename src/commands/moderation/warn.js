@@ -55,6 +55,11 @@ module.exports = {
             db.addWarning(message.guild.id, target.id, message.author.id, reason);
             const totalWarns = db.getWarningCount(message.guild.id, target.id);
 
+            // Appliquer Pénalité TrustScore
+            if (client.trustScore) {
+                await client.trustScore.addPenalty(message.guild.id, target.id, 10, 'Avertissement (Warn)');
+            }
+
             const embed = embeds.moderation(
                 `✅ **Avertissement donné avec succès**\n\n` +
                 `**Membre:** ${target.user.tag}\n` +

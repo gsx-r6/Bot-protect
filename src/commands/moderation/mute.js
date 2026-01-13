@@ -56,6 +56,11 @@ module.exports = {
                 await target.timeout(durationMs, auditReason);
             }
 
+            // Appliquer Pénalité TrustScore
+            if (client.trustScore) {
+                await client.trustScore.addPenalty(message.guild.id, target.id, 25, 'Rendu muet (Mute)');
+            }
+
             // Log vers LogService
             if (client.logs) {
                 await client.logs.logModeration(message.guild, 'MUTE', {

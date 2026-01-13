@@ -36,9 +36,17 @@ module.exports = {
             if (customId === 'nami_ticket_add') return showAddUserModal(interaction);
         }
 
-        // 2. MODALS
+        // 2. SELECT MENUS
+        if (interaction.isStringSelectMenu()) {
+            if (customId === 'nami_ticket_category_select') return showTicketModal(interaction, interaction.values[0].replace('cat_', ''));
+        }
+
+        // 3. MODALS
         if (interaction.isModalSubmit()) {
-            if (customId === 'nami_ticket_modal') return createTicket(interaction, client);
+            if (customId.startsWith('nami_ticket_modal')) {
+                const categoryId = customId.split('_')[3] || null;
+                return createTicket(interaction, client, categoryId);
+            }
             if (customId === 'nami_ticket_add_modal') return addUserToTicket(interaction);
         }
     }
@@ -46,9 +54,10 @@ module.exports = {
 
 // --- FONCTIONS LOGIQUES ---
 
-async function showTicketModal(interaction) {
+async function showTicketModal(interaction, categoryId = null) {
+    const customId = categoryId ? `nami_ticket_modal_${categoryId}` : 'nami_ticket_modal';
     const modal = new ModalBuilder()
-        .setCustomId('nami_ticket_modal')
+        .setCustomId(customId)
         .setTitle('Ouvrir un Ticket');
 
     const subjectInput = new TextInputBuilder()
@@ -75,7 +84,7 @@ async function showTicketModal(interaction) {
     await interaction.showModal(modal);
 }
 
-async function createTicket(interaction, client) {
+async function createTicket(interaction, client, categoryId = null) {
     await interaction.deferReply({ ephemeral: true });
 
     const guild = interaction.guild;
@@ -94,6 +103,18 @@ async function createTicket(interaction, client) {
         });
     }
 
+    // Configuration Spécifique Catégorie
+    let staffRoleId = ticketConfig.staff_role;
+    let parentId = ticketConfig.category_id;
+
+    if (categoryId) {
+        const specificCat = db.getTicketCategory(categoryId);
+        if (specificCat) {
+            staffRoleId = specificCat.staff_role_id;
+            parentId = specificCat.category_id;
+        }
+    }
+
     // Création Salon
     const ticketNumber = (db.getTicketStats(guild.id).total || 0) + 1;
     const channelName = `ticket-${ticketNumber}`;
@@ -105,8 +126,8 @@ async function createTicket(interaction, client) {
     ];
 
     // Permission Staff
-    if (ticketConfig.staff_role) {
-        overwrites.push({ id: ticketConfig.staff_role, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
+    if (staffRoleId) {
+        overwrites.push({ id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
     }
 
     // Permission Muted (Allow interaction in tickets)
@@ -115,8 +136,8 @@ async function createTicket(interaction, client) {
         overwrites.push({ id: guildConfig.mute_role_id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
     }
 
-    const parent = ticketConfig.category_id && guild.channels.cache.get(ticketConfig.category_id)?.type === ChannelType.GuildCategory
-        ? ticketConfig.category_id
+    const parent = parentId && guild.channels.cache.get(parentId)?.type === ChannelType.GuildCategory
+        ? parentId
         : null;
 
     const channel = await guild.channels.create({
@@ -128,7 +149,7 @@ async function createTicket(interaction, client) {
     });
 
     // Enregistrement DB
-    db.addTicket(guild.id, channel.id, owner.id, subject);
+    db.addTicket(guild.id, channel.id, owner.id, subject, categoryId);
 
     // Message de Bienvenue (Embed UHQ)
     const embed = new EmbedBuilder()
@@ -137,7 +158,7 @@ async function createTicket(interaction, client) {
         .setDescription(`Bonjour ${owner}, un membre du staff va prendre en charge votre demande.\n\n**Votre Message :**\n${description}`)
         .addFields(
             { name: '👤 Utilisateur', value: `${owner}`, inline: true },
-            { name: '🛡️ Staff', value: ticketConfig.staff_role ? `<@&${ticketConfig.staff_role}>` : 'Non assigné', inline: true }
+            { name: '🛡️ Staff', value: staffRoleId ? `<@&${staffRoleId}>` : 'Non assigné', inline: true }
         )
         .setThumbnail(owner.displayAvatarURL())
         .setTimestamp();
@@ -150,7 +171,7 @@ async function createTicket(interaction, client) {
     );
 
     // Mention Staff
-    const mention = ticketConfig.staff_role ? `<@&${ticketConfig.staff_role}>` : '';
+    const mention = staffRoleId ? `<@&${staffRoleId}>` : '';
     await channel.send({ content: `${owner} ${mention}`, embeds: [embed], components: [row] });
 
     await interaction.editReply({ content: `✅ Ticket créé : ${channel}` });

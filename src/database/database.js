@@ -85,6 +85,11 @@ class DB {
                     table: 'guild_config',
                     column: 'mute_role_id',
                     query: "ALTER TABLE guild_config ADD COLUMN mute_role_id TEXT"
+                },
+                {
+                    table: 'tickets',
+                    column: 'ticket_category_id',
+                    query: "ALTER TABLE tickets ADD COLUMN ticket_category_id INTEGER"
                 }
             ];
 
@@ -175,9 +180,9 @@ class DB {
     }
 
     // Tickets helpers
-    addTicket(guild, channel, owner, topic = null) {
-        const info = this.db.prepare('INSERT INTO tickets (guild, channel, owner, topic, status, created_at) VALUES (?,?,?,?,?,?)')
-            .run(guild, channel, owner, topic, 'open', new Date().toISOString());
+    addTicket(guild, channel, owner, topic = null, ticketCategoryId = null) {
+        const info = this.db.prepare('INSERT INTO tickets (guild, channel, owner, topic, status, created_at, ticket_category_id) VALUES (?,?,?,?,?,?,?)')
+            .run(guild, channel, owner, topic, 'open', new Date().toISOString(), ticketCategoryId);
         return info.lastInsertRowid;
     }
 
@@ -221,6 +226,24 @@ class DB {
             activeRaid: this.db.prepare('SELECT is_active FROM raid_states WHERE guild_id = ?').get(guildId)?.is_active || 0,
             kick: this.db.prepare('SELECT COUNT(*) as count FROM sanctions WHERE guild = ? AND type = ?').get(guildId, 'KICK')?.count || 0,
         };
+    }
+
+    // Ticket categories
+    getTicketCategories(guildId) {
+        return this.db.prepare('SELECT * FROM ticket_categories WHERE guild_id = ?').all(guildId);
+    }
+
+    addTicketCategory(guildId, data) {
+        return this.db.prepare('INSERT INTO ticket_categories (guild_id, name, label, emoji, description, staff_role_id, category_id, created_at) VALUES (?,?,?,?,?,?,?,?)')
+            .run(guildId, data.name, data.label, data.emoji, data.description, data.staff_role_id, data.category_id, new Date().toISOString());
+    }
+
+    deleteTicketCategory(guildId, id) {
+        this.db.prepare('DELETE FROM ticket_categories WHERE guild_id = ? AND id = ?').run(guildId, id);
+    }
+
+    getTicketCategory(id) {
+        return this.db.prepare('SELECT * FROM ticket_categories WHERE id = ?').get(id);
     }
 
     // Ticket config
@@ -414,6 +437,49 @@ class DB {
 
     removePersistentMute(guildId, userId) {
         this.db.prepare('DELETE FROM persistent_mutes WHERE guild_id = ? AND user_id = ?').run(guildId, userId);
+    }
+
+    // Trust Score Methods
+    getTrustScoreData(guildId, userId) {
+        return this.db.prepare('SELECT * FROM trust_scores WHERE guild_id = ? AND user_id = ?').get(guildId, userId);
+    }
+
+    upsertTrustScore(guildId, userId, data) {
+        const existing = this.getTrustScoreData(guildId, userId);
+        if (!existing) {
+            this.db.prepare('INSERT INTO trust_scores (guild_id, user_id, score, activity_points, last_message_at, global_malus, updated_at) VALUES (?,?,?,?,?,?,?)')
+                .run(guildId, userId, data.score || 50, data.activity_points || 0, data.last_message_at || null, data.global_malus || 0, new Date().toISOString());
+        } else {
+            this.db.prepare('UPDATE trust_scores SET score = ?, activity_points = ?, last_message_at = ?, global_malus = ?, updated_at = ? WHERE guild_id = ? AND user_id = ?')
+                .run(data.score ?? existing.score, data.activity_points ?? existing.activity_points, data.last_message_at ?? existing.last_message_at, data.global_malus ?? existing.global_malus, new Date().toISOString(), guildId, userId);
+        }
+    }
+
+    getTrustConfig(guildId) {
+        return this.db.prepare('SELECT * FROM trust_config WHERE guild_id = ?').get(guildId);
+    }
+
+    setTrustConfig(guildId, key, value) {
+        const config = this.getTrustConfig(guildId);
+        if (!config) {
+            this.db.prepare(`INSERT INTO trust_config (guild_id, ${key}, updated_at) VALUES (?, ?, ?)`).run(guildId, value, new Date().toISOString());
+        } else {
+            this.db.prepare(`UPDATE trust_config SET ${key} = ?, updated_at = ? WHERE guild_id = ?`).run(value, new Date().toISOString(), guildId);
+        }
+    }
+
+    addTrustHistory(guildId, userId, change, reason) {
+        this.db.prepare('INSERT INTO trust_history (guild_id, user_id, change_amount, reason, timestamp) VALUES (?,?,?,?,?)')
+            .run(guildId, userId, change, reason, new Date().toISOString());
+    }
+
+    getTrustHistory(guildId, userId) {
+        return this.db.prepare('SELECT * FROM trust_history WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 10').all(guildId, userId);
+    }
+
+    getGlobalMalus(userId) {
+        const rows = this.db.prepare('SELECT global_malus FROM trust_scores WHERE user_id = ? AND global_malus = 1').all(userId);
+        return rows.length > 0 ? 1 : 0;
     }
 
     close() {

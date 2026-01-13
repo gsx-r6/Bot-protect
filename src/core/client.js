@@ -11,6 +11,7 @@ const MuteService = require('../services/MuteService');
 const AntiBot = require('../security/antiBot');
 const RoleProtector = require('../security/roleProtector');
 const MemberProtector = require('../security/memberProtector');
+const TrustScoreService = require('../services/TrustScoreService');
 
 class NamiClient extends Client {
     constructor() {
@@ -45,7 +46,9 @@ class NamiClient extends Client {
         this.roleProtector = new RoleProtector(this);
         this.roleProtector.init();
         this.memberProtector = new MemberProtector(this);
+        this.trustScore = new TrustScoreService(this);
         this.memberProtector.init();
+        this.trustScore.init();
 
         // Attach runtime config
         try {

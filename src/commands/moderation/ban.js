@@ -61,6 +61,17 @@ module.exports = {
 
             await target.ban({ reason: auditReason });
 
+            // Global Reputation Check: If the ban is for raiding/nuking/staff raid
+            const malusKeywords = ['raid', 'nuke', 'hack', 'token', 'insulte staff', 'staff raid'];
+            const lowerReason = banReason.toLowerCase();
+            const shouldApplyGlobalMalus = malusKeywords.some(k => lowerReason.includes(k));
+
+            if (shouldApplyGlobalMalus && client.trustScore) {
+                db.upsertTrustScore(message.guild.id, target.id, { global_malus: 1 });
+                db.addTrustHistory(message.guild.id, target.id, -100, `MALUS GLOBAL : ${banReason}`);
+                client.logger.warn(`[Global Malus] Applied to ${target.user.tag} for ${banReason}`);
+            }
+
             // Log vers LogService
             if (client.logs) {
                 await client.logs.logModeration(message.guild, 'BAN', {

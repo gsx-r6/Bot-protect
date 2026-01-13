@@ -22,7 +22,21 @@ module.exports = {
                     { name: '🔗 Serveur rejoint', value: `${target.joinedAt?.toLocaleDateString('fr-FR') || 'Inconnu'}`, inline: true },
                     { name: '🎭 Rôles', value: `${target.roles.cache.size - 1} rôles`, inline: true }
                 )
-                .setFooter({ text: `Demandé par ${message.author.tag}` });
+                .setFooter({ text: `Demandé par ${message.author.tag} | UHQ Trust System` });
+
+            // TrustScore Integration
+            if (client.trustScore) {
+                const score = await client.trustScore.getScore(target);
+                const gaugeBuffer = await require('../../utils/canvasHelper').generateTrustGauge(score);
+                if (gaugeBuffer) {
+                    const { AttachmentBuilder } = require('discord.js');
+                    const attachment = new AttachmentBuilder(gaugeBuffer, { name: 'trust.png' });
+                    embed.setImage('attachment://trust.png');
+                    return message.reply({ embeds: [embed], files: [attachment] });
+                } else {
+                    embed.addFields({ name: '🛡️ TrustScore', value: `**${score}/100**`, inline: true });
+                }
+            }
 
             await message.reply({ embeds: [embed] });
         } catch (err) {

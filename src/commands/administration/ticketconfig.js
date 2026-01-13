@@ -67,6 +67,14 @@ module.exports = {
                 case 'reset':
                     return this.resetConfig(message, client, color);
 
+                case 'addcategory':
+                case 'addcat':
+                    return this.addCategory(message, args, client, color);
+
+                case 'delcategory':
+                case 'delcat':
+                    return this.deleteCategory(message, args, client, color);
+
                 case 'status':
                 case 'info':
                     return this.showStatus(message, client, color, prefix);
@@ -278,9 +286,68 @@ module.exports = {
         return message.reply({ embeds: [embed] });
     },
 
+    async addCategory(message, args, client, color) {
+        const name = args[1];
+        const roleId = args[2];
+        const dispCategoryId = args[3];
+        const emoji = args[4] || '🎫';
+        const description = args.slice(5).join(' ') || 'Ouvrir un ticket dans cette catégorie';
+
+        if (!name || !roleId || !dispCategoryId) {
+            return message.reply({
+                embeds: [embeds.error('Utilisation incorrecte.\n`ticketconfig addcategory <nom> <ID_Role_Staff> <ID_Categorie_Discord> [emoji] [description]`')]
+            });
+        }
+
+        const role = message.guild.roles.cache.get(roleId);
+        const discordCategory = message.guild.channels.cache.get(dispCategoryId);
+
+        if (!role) return message.reply({ embeds: [embeds.error('Rôle staff introuvable.')] });
+        if (!discordCategory || discordCategory.type !== ChannelType.GuildCategory) {
+            return message.reply({ embeds: [embeds.error('Catégorie Discord introuvable ou invalide.')] });
+        }
+
+        db.addTicketCategory(message.guild.id, {
+            name: name,
+            label: name,
+            emoji: emoji,
+            description: description,
+            staff_role_id: roleId,
+            category_id: dispCategoryId
+        });
+
+        const embed = new EmbedBuilder()
+            .setColor(color)
+            .setTitle('✅ Catégorie Ajoutée')
+            .setDescription(`La catégorie **${name}** a été ajoutée avec succès.`)
+            .addFields(
+                { name: '🛡️ Staff', value: `<@&${roleId}>`, inline: true },
+                { name: '📁 Categorie', value: discordCategory.name, inline: true }
+            )
+            .setTimestamp();
+
+        return message.reply({ embeds: [embed] });
+    },
+
+    async deleteCategory(message, args, client, color) {
+        const id = args[1];
+        if (!id) return message.reply({ embeds: [embeds.error('Veuillez fournir l\'ID de la catégorie à supprimer. (Voir `ticketconfig status`)')] });
+
+        db.deleteTicketCategory(message.guild.id, id);
+
+        const embed = new EmbedBuilder()
+            .setColor(color)
+            .setTitle('🗑️ Catégorie Supprimée')
+            .setDescription(`La catégorie avec l'ID **${id}** a été supprimée.`)
+            .setTimestamp();
+
+        return message.reply({ embeds: [embed] });
+    },
+
     async showStatus(message, client, color, prefix) {
         const config = db.getTicketConfig(message.guild.id) || {};
         const stats = db.getTicketStats(message.guild.id);
+        const categories = db.getTicketCategories(message.guild.id);
 
         const staffRole = config.staff_role ? `<@&${config.staff_role}>` : '❌ Non configuré';
         const category = config.category_id ? message.guild.channels.cache.get(config.category_id)?.name || '❌ Catégorie supprimée' : '❌ Non configuré';
@@ -288,13 +355,17 @@ module.exports = {
         const maxTickets = config.max_tickets ?? 1;
         const transcriptEnabled = config.transcript_enabled ?? 1;
 
+        const categoriesList = categories.length > 0
+            ? categories.map(c => `**ID: ${c.id}** | ${c.emoji} ${c.name} (Staff: <@&${c.staff_role_id}>)`).join('\n')
+            : 'Aucune catégorie spécifique (Utilise la config globale)';
+
         const embed = new EmbedBuilder()
             .setColor(color)
             .setTitle('🎫 Configuration des Tickets')
             .setThumbnail(message.guild.iconURL({ dynamic: true }))
             .addFields(
                 {
-                    name: '⚙️ Configuration',
+                    name: '⚙️ Configuration Globale',
                     value: [
                         `**Rôle Staff:** ${staffRole}`,
                         `**Catégorie:** ${category}`,
@@ -302,6 +373,11 @@ module.exports = {
                         `**Limite par user:** ${maxTickets}`,
                         `**Transcripts:** ${transcriptEnabled ? '✅ Activés' : '❌ Désactivés'}`
                     ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '📂 Catégories Spécifiques',
+                    value: categoriesList,
                     inline: false
                 },
                 {
@@ -348,7 +424,9 @@ module.exports = {
                         `\`${prefix}ticketconfig color #RRGGBB\` - Couleur du panel`,
                         `\`${prefix}ticketconfig message <texte>\` - Message d'accueil`,
                         `\`${prefix}ticketconfig transcript\` - Activer/désactiver transcripts`,
-                        `\`${prefix}ticketconfig reset\` - Réinitialiser la config`
+                        `\`${prefix}ticketconfig reset\` - Réinitialiser la config`,
+                        `\`${prefix}ticketconfig addcategory <nom> <roleID> <catID> [emoji] [desc]\` - Ajouter une catégorie`,
+                        `\`${prefix}ticketconfig delcategory <ID>\` - Supprimer une catégorie`
                     ].join('\n'),
                     inline: false
                 },

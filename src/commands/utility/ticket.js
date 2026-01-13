@@ -54,20 +54,46 @@ module.exports = {
                 embed.setThumbnail(message.guild.iconURL({ dynamic: true, size: 256 }));
             }
 
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('nami_ticket_create')
-                    .setLabel('Créer un ticket')
-                    .setEmoji('📩')
-                    .setStyle(ButtonStyle.Success),
+            const categories = db.getTicketCategories(guildId);
+            const components = [];
+
+            if (categories.length > 0) {
+                const { StringSelectMenuBuilder } = require('discord.js');
+                const select = new StringSelectMenuBuilder()
+                    .setCustomId('nami_ticket_category_select')
+                    .setPlaceholder('Choisissez une catégorie de ticket...')
+                    .addOptions(
+                        categories.map(cat => ({
+                            label: cat.label,
+                            description: cat.description,
+                            value: `cat_${cat.id}`,
+                            emoji: cat.emoji
+                        }))
+                    );
+
+                components.push(new ActionRowBuilder().addComponents(select));
+            } else {
+                const row = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('nami_ticket_create')
+                        .setLabel('Créer un ticket')
+                        .setEmoji('📩')
+                        .setStyle(ButtonStyle.Success)
+                );
+                components.push(row);
+            }
+
+            // Second row for other buttons
+            const secondRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId('nami_ticket_list')
                     .setLabel('Mes tickets')
                     .setEmoji('📋')
                     .setStyle(ButtonStyle.Secondary)
             );
+            components.push(secondRow);
 
-            await message.channel.send({ embeds: [embed], components: [row] });
+            await message.channel.send({ embeds: [embed], components: components });
 
             const confirmEmbed = new EmbedBuilder()
                 .setColor('#00FF00')
